@@ -1,3 +1,6 @@
+install:
+	pip install -r requirements.txt
+
 build:
 	python3 setup.py sdist bdist_wheel
 
