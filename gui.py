@@ -47,6 +47,7 @@ class MainApplication(tk.Frame):
         toolbarframe.grid(row=1, column=0, columnspan=12, sticky='w')
         self.toolbar = NavigationToolbar2Tk(self.ecgcanvas, toolbarframe)
         self.toolbar.update()
+        # self.build_ecg()
 
     def initmenu(self):
         self.menubar = tk.Menu(self.master)
@@ -93,17 +94,34 @@ class MainApplication(tk.Frame):
                 lbl.grid(row=ro, column=col, sticky='e')
                 entry.grid(row=ro, column=col+1)
 
-            # create label+entry for omega, the angular velocity
-            lbl_w = tk.Label(self.formframe, text='w (pi)').grid(row=8, column=0, sticky='e')
-            entry_w = tk.Entry(self.formframe, width=10)
-            entry_w.insert(0, str(2*pi))
-            entry_w.grid(row=8, column=1)
+        # create label+entry for omega, the angular velocity
+        lbl_w = tk.Label(self.formframe, text='w (pi)').grid(row=8, column=0, sticky='e')
+        entry_w = tk.Entry(self.formframe, width=10)
+        entry_w.insert(0, str(2*pi))
+        entry_w.grid(row=8, column=1)
 
     def build_ecg(self):
+        inputs = [float(e.get()) for e in self.formframe.winfo_children() if isinstance(e, tk.Entry)]
+        a, b, evt = [], [], []
+        for (ai, bi, ei) in triway(inputs):
+            a.append(ai)
+            b.append(bi)
+            evt.append(ei)
+
         self.fig.cla()
-        sol = build_ecg()
+        # sol = build_ecg()
+        sol = build_ecg(np.array(a), np.array(b), np.array(evt))
         self.fig.plot(sol.t, sol.y[2], 'b-')
         self.ecgcanvas.draw()
+
+
+def triway(lst):
+    it = iter(lst)
+    while True:
+        try:
+            yield next(it), next(it), next(it)
+        except StopIteration:
+            return
 
 
 def odefcn(T, Y, a, b, w, events):
