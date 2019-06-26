@@ -1,24 +1,32 @@
 #!/usr/bin/env python3
+import re
 import tkinter as tk
 
+import numpy as np
+import numexpr as ne
+
+from scipy.integrate import solve_ivp
+from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (
     FigureCanvasTkAgg, NavigationToolbar2Tk)
 
-from matplotlib.figure import Figure
-
-import numpy as np
-from scipy.integrate import solve_ivp
+from helpers import helper
 
 pi = np.pi
+# pattern to allow only numbers, math operators +-*/() and pi
+pattern = re.compile('^[0-9.+\\-*/()pi\b]*$')
 
 
 class MainApplication(tk.Frame):
     def __init__(self):
         super().__init__()
-        self.defaults = {
-            'a': [1.2, -5.0, 30.0, -7.5, 0.75],
-            'b': [0.25, 0.1, 0.1, 0.1, 0.4],
-            'event': [-pi/3, -pi/12, 0, pi/12, pi/2]
+        self.preset = {
+            'default': {
+                'a': [1.2, -5.0, 30.0, -7.5, 0.75],
+                'b': [0.25, 0.1, 0.1, 0.1, 0.4],
+                'event': [-pi/3, -pi/12, 0, pi/12, pi/2],
+                'omega': [2*pi]
+            }
         }
         self.initUI()
 
@@ -40,7 +48,8 @@ class MainApplication(tk.Frame):
         self.initmenu()
         self.initform()
 
-        self.buildbtn = tk.Button(self.formframe, text='Build', command=self.build_ecg, pady=8)
+        self.buildbtn = tk.Button(self.formframe, text='Build',
+            command=self.build_ecg, pady=8)
         self.buildbtn.grid(row=12, column=1, columnspan=2, pady=20)
 
         figure = Figure(figsize=(5, 4), dpi=100)
@@ -67,9 +76,13 @@ class MainApplication(tk.Frame):
         self.master.config(menu=self.menubar)
 
     def initform(self):
-        vcmd = (self.register(self.onValidate),
-                '%d', '%i', '%P', '%s', '%S', '%v', '%V', '%W')
+        vcmdAB = (self.register(self.validateAB),
+            '%d', '%i', '%P', '%s', '%S', '%v', '%V', '%W')
 
+        vcmdEvt = (self.register(self.validateEvent),
+            '%d', '%i', '%P', '%s', '%S', '%v', '%V', '%W')
+
+        defaults = self.preset['default']
         a, b, events = [], [], []
         for i in range(0, 5):
             # create 5 labels and entries for a,b,event
@@ -78,20 +91,20 @@ class MainApplication(tk.Frame):
             lbl_event = tk.Label(self.formframe, text='theta{} (pi)'.format(i+1))
 
             entry_a = tk.Entry(self.formframe, validate='key',
-                               validatecommand=vcmd, width=10)
-            entry_a.insert(0, self.defaults['a'][i])
+                               validatecommand=vcmdAB, width=10)
+            entry_a.insert(0, defaults['a'][i])
             entry_a.label = 'a'
             entry_a.number = i
 
             entry_b = tk.Entry(self.formframe, validate='key',
-                               validatecommand=vcmd, width=10)
-            entry_b.insert(0, self.defaults['b'][i])
+                               validatecommand=vcmdAB, width=10)
+            entry_b.insert(0, defaults['b'][i])
             entry_b.label = 'b'
             entry_b.number = i
 
             entry_event = tk.Entry(self.formframe, validate='key',
-                                   validatecommand=vcmd, width=10)
-            entry_event.insert(0, self.defaults['event'][i])
+                                   validatecommand=vcmdEvt, width=10)
+            entry_event.insert(0, defaults['event'][i])
             entry_event.label = 'event'
             entry_event.number = i
 
@@ -109,23 +122,19 @@ class MainApplication(tk.Frame):
         # create label+entry for omega, the angular velocity
         lbl_w = tk.Label(self.formframe, text='w (pi)').grid(row=8, column=0, sticky='e')
         entry_w = tk.Entry(self.formframe, width=10)
-        entry_w.insert(0, str(2*pi))
+        entry_w.label = 'omega'
+        entry_w.number = 0
+        entry_w.insert(0, 2*pi)
         entry_w.grid(row=8, column=1)
 
-    def onValidate(self, d, i, P, s, S, v, V, W):
-        # valid percent substitutions (from the Tk entry man page)
-        # note: you only have to register the ones you need
-        #
-        # %d = Type of action (1=insert, 0=delete, -1 for others)
-        # %i = index of char string to be inserted/deleted, or -1
-        # %P = value of the entry if the edit is allowed
-        # %s = value of entry prior to editing
-        # %S = the text string being inserted or deleted, if any
-        # %v = the type of validation that is currently set
-        # %V = the type of validation that triggered the callback
-        #      (key, focusin, focusout, forced)
-        # %W = the tk name of the widget
+    def validateEvent(self, d, i, P, s, S, v, V, W):
+        # only allow numbers, operators -, +, *, /, round brackets
+        # and the keyword pi
+        if (re.match(pattern, P)):
+            return True
+        return False
 
+    def validateAB(self, d, i, P, s, S, v, V, W):
         # dont allow anything that can't be parsed as a float
         try:
             float(P)
@@ -136,34 +145,27 @@ class MainApplication(tk.Frame):
             return False
 
     def build_ecg(self):
-        inputs = []
+        defaults, inputs = self.preset['default'], []
         for e in self.formframe.winfo_children():
-            if isinstance(e, tk.Entry):
-                s = e.get().strip()
-                if not s:
-                    e.insert(0, self.defaults[e.label][e.number])
-                i = float(e.get())
-                inputs.append(i)
+            if not isinstance(e, tk.Entry):
+                continue
+
+            if not e.get().strip():
+                e.insert(0, defaults[e.label][e.number])
+
+            i = float(e.get())
+            inputs.append(i)
+
         a, b, evt = [], [], []
-        for (ai, bi, ei) in triway(inputs):
+        for (ai, bi, ei) in helper.triway(inputs):
             a.append(ai)
             b.append(bi)
             evt.append(ei)
 
         self.fig.cla()
-        # sol = build_ecg()
         sol = build_ecg(np.array(a), np.array(b), np.array(evt))
         self.fig.plot(sol.t, sol.y[2], 'b-')
         self.ecgcanvas.draw()
-
-
-def triway(lst):
-    it = iter(lst)
-    while True:
-        try:
-            yield next(it), next(it), next(it)
-        except StopIteration:
-            return
 
 
 def odefcn(T, Y, a, b, w, events):
@@ -207,7 +209,3 @@ def main():
     root = tk.Tk()
     app = MainApplication()
     root.mainloop()
-
-
-if __name__ == "__main__":
-    main()
