@@ -15,6 +15,11 @@ pi = np.pi
 class MainApplication(tk.Frame):
     def __init__(self):
         super().__init__()
+        self.defaults = {
+            'a': [1.2, -5.0, 30.0, -7.5, 0.75],
+            'b': [0.25, 0.1, 0.1, 0.1, 0.4],
+            'event': [-pi/3, -pi/12, 0, pi/12, pi/2]
+        }
         self.initUI()
 
     def initUI(self):
@@ -62,11 +67,9 @@ class MainApplication(tk.Frame):
         self.master.config(menu=self.menubar)
 
     def initform(self):
-        vals = {
-            "a": [1.2, -5.0, 30.0, -7.5, 0.75],
-            "b": [0.25, 0.1, 0.1, 0.1, 0.4],
-            "event": [-pi/3, -pi/12, 0, pi/12, pi/2]
-        }
+        vcmd = (self.register(self.onValidate),
+                '%d', '%i', '%P', '%s', '%S', '%v', '%V', '%W')
+
         a, b, events = [], [], []
         for i in range(0, 5):
             # create 5 labels and entries for a,b,event
@@ -74,14 +77,23 @@ class MainApplication(tk.Frame):
             lbl_b = tk.Label(self.formframe, text='b{}'.format(i+1))
             lbl_event = tk.Label(self.formframe, text='theta{} (pi)'.format(i+1))
 
-            entry_a = tk.Entry(self.formframe, width=10)
-            entry_a.insert(0, str(vals["a"][i]))
+            entry_a = tk.Entry(self.formframe, validate='key',
+                               validatecommand=vcmd, width=10)
+            entry_a.insert(0, self.defaults['a'][i])
+            entry_a.label = 'a'
+            entry_a.number = i
 
-            entry_b = tk.Entry(self.formframe, width=10)
-            entry_b.insert(0, str(vals["b"][i]))
+            entry_b = tk.Entry(self.formframe, validate='key',
+                               validatecommand=vcmd, width=10)
+            entry_b.insert(0, self.defaults['b'][i])
+            entry_b.label = 'b'
+            entry_b.number = i
 
-            entry_event = tk.Entry(self.formframe, width=10)
-            entry_event.insert(0, str(vals["event"][i]))
+            entry_event = tk.Entry(self.formframe, validate='key',
+                                   validatecommand=vcmd, width=10)
+            entry_event.insert(0, self.defaults['event'][i])
+            entry_event.label = 'event'
+            entry_event.number = i
 
             a.append((lbl_a, entry_a))
             b.append((lbl_b, entry_b))
@@ -100,8 +112,38 @@ class MainApplication(tk.Frame):
         entry_w.insert(0, str(2*pi))
         entry_w.grid(row=8, column=1)
 
+    def onValidate(self, d, i, P, s, S, v, V, W):
+        # valid percent substitutions (from the Tk entry man page)
+        # note: you only have to register the ones you need
+        #
+        # %d = Type of action (1=insert, 0=delete, -1 for others)
+        # %i = index of char string to be inserted/deleted, or -1
+        # %P = value of the entry if the edit is allowed
+        # %s = value of entry prior to editing
+        # %S = the text string being inserted or deleted, if any
+        # %v = the type of validation that is currently set
+        # %V = the type of validation that triggered the callback
+        #      (key, focusin, focusout, forced)
+        # %W = the tk name of the widget
+
+        # dont allow anything that can't be parsed as a float
+        try:
+            float(P)
+            return True
+        except ValueError:
+            if not P:
+                return True
+            return False
+
     def build_ecg(self):
-        inputs = [float(e.get()) for e in self.formframe.winfo_children() if isinstance(e, tk.Entry)]
+        inputs = []
+        for e in self.formframe.winfo_children():
+            if isinstance(e, tk.Entry):
+                s = e.get().strip()
+                if not s:
+                    e.insert(0, self.defaults[e.label][e.number])
+                i = float(e.get())
+                inputs.append(i)
         a, b, evt = [], [], []
         for (ai, bi, ei) in triway(inputs):
             a.append(ai)
