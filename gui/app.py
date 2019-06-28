@@ -14,7 +14,7 @@ from helpers import helper
 
 pi = np.pi
 # pattern to allow only numbers, math operators +-*/() and pi
-pattern = re.compile('^[0-9.+\\-*/()pi\b]*$')
+mathops = re.compile(r"^[0-9.+\-*/()pi\b]*$")
 
 
 class MainApplication(tk.Frame):
@@ -24,8 +24,8 @@ class MainApplication(tk.Frame):
             'default': {
                 'a': [1.2, -5.0, 30.0, -7.5, 0.75],
                 'b': [0.25, 0.1, 0.1, 0.1, 0.4],
-                'event': [-pi/3, -pi/12, 0, pi/12, pi/2],
-                'omega': [2*pi]
+                'event': ["-pi/3", "-pi/12", "0", "pi/12", "pi/2"],
+                'omega': ["2*pi"]
             }
         }
         self.initUI()
@@ -130,7 +130,7 @@ class MainApplication(tk.Frame):
     def validateEvent(self, d, i, P, s, S, v, V, W):
         # only allow numbers, operators -, +, *, /, round brackets
         # and the keyword pi
-        if (re.match(pattern, P)):
+        if (re.match(mathops, P)):
             return True
         return False
 
@@ -153,7 +153,16 @@ class MainApplication(tk.Frame):
             if not e.get().strip():
                 e.insert(0, defaults[e.label][e.number])
 
-            i = float(e.get())
+            if e.label == 'a' or e.label == 'b':
+                i = float(e.get())
+            else:
+                s = helper.pirepl(e.get())
+                try:
+                    i = ne.evaluate(s)
+                except:
+                    print('bad input')
+                    return
+
             inputs.append(i)
 
         a, b, evt = [], [], []
