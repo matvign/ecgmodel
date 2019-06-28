@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import re
 
-pattern = re.compile(r"(pi\s*|[0-9.]+)(?=(\s*pi|[0-9.]))")
+pi_regx = re.compile(r"(pi\s*|[0-9.]+)(?=(\s*pi|[0-9.]))")
 
 
 def triway(lst):
@@ -13,14 +13,13 @@ def triway(lst):
             return
 
 
-def repl(matchobj):
-    if matchobj.group(1).strip() == 'pi':
-        return "{}*".format(matchobj.group(1))
-    elif matchobj.group(2).strip() == 'pi':
-        return "{}*".format(matchobj.group(1))
-    else:
-        return matchobj.group(0)
-
-
 def pirepl(word):
-    return re.sub(pattern, repl, word)
+    def repl(matchobj):
+        if matchobj.group(1).strip() == 'pi':
+            return "{}*".format(matchobj.group(1))
+        elif matchobj.group(2).strip() == 'pi':
+            return "{}*".format(matchobj.group(1))
+        else:
+            return matchobj.group(0)
+
+    return re.sub(pi_regx, repl, word)

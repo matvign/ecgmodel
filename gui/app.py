@@ -2,9 +2,8 @@
 import re
 import tkinter as tk
 
-import numpy as np
 import numexpr as ne
-
+import numpy as np
 from scipy.integrate import solve_ivp
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (
@@ -17,7 +16,7 @@ pi = np.pi
 mathops = re.compile(r"^[0-9.+\-*/()pi\b]*$")
 
 
-class MainApplication(tk.Frame):
+class ECGModel(tk.Frame):
     def __init__(self):
         super().__init__()
         self.preset = {
@@ -124,7 +123,7 @@ class MainApplication(tk.Frame):
         entry_w = tk.Entry(self.formframe, width=10)
         entry_w.label = 'omega'
         entry_w.number = 0
-        entry_w.insert(0, 2*pi)
+        entry_w.insert(0, "2*pi")
         entry_w.grid(row=8, column=1)
 
     def validateEvent(self, d, i, P, s, S, v, V, W):
@@ -160,7 +159,7 @@ class MainApplication(tk.Frame):
                 try:
                     i = ne.evaluate(s)
                 except:
-                    print('bad input')
+                    tk.messagebox.showerror("Error", "Could not interpret mathematical expression")
                     return
 
             inputs.append(i)
@@ -209,12 +208,14 @@ def build_ecg(a=None, b=None, evt=None, w=2*pi):
 
     tspan = np.array([0.0, 1.0])
     y0 = np.array([-1.0, 0.0, 0.0])
+    teval = np.linspace(0, 1, num=100)
     print('building...')
-    sol = solve_ivp(fun=lambda t, y: odefcn(t, y, a, b, w, evt), t_span=tspan, y0=y0)
+    sol = solve_ivp(fun=lambda t, y: odefcn(t, y, a, b, w, evt),
+                    t_span=tspan, y0=y0, t_eval=teval)
     return sol
 
 
 def main():
     root = tk.Tk()
-    app = MainApplication()
+    app = ECGModel()
     root.mainloop()
