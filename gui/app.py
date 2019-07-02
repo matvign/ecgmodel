@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import json
 import re
+
 import tkinter as tk
 from tkinter import filedialog
+from tkinter import ttk
 
 import numexpr as ne
 import numpy as np
@@ -18,12 +20,13 @@ pi = np.pi
 mathops = re.compile(r"^[0-9.+\-*/()pi\b]*$")
 
 
-class ECGModel(tk.Frame):
+class ECGModel(ttk.Frame):
     def __init__(self):
         super().__init__()
         self.master.title('Embedding in Tk')
         self.master.geometry('950x450')
         self.master.option_add('*tearOff', 0)
+
         self.preset = {
             'default': {
                 'a': [1.2, -5.0, 30.0, -7.5, 0.75],
@@ -32,15 +35,20 @@ class ECGModel(tk.Frame):
                 'omega': ["2*pi"]
             }
         }
+        self.initStyles()
         self.initUI()
 
-    def initUI(self):
-        self.content = tk.Frame(self.master)
-        self.ecgframe = tk.Frame(self.content, bd=4, relief='sunken', height=400, width=500)
-        self.formframe = tk.Frame(self.content)
-        self.buttonframe = tk.Frame(self.content)
+    def initStyles(self):
+        self.style = ttk.Style()
+        self.style.theme_use("default")
 
-        self.content.grid(sticky='nsew')
+    def initUI(self):
+        self.pack(fill=tk.BOTH, expand=True)
+
+        self.ecgframe = ttk.Frame(self)
+        self.formframe = ttk.Frame(self)
+        self.buttonframe = ttk.Frame(self)
+
         self.ecgframe.grid(row=0, column=0, sticky='nsew', padx=(0, 10), pady=(10, 0))
         self.formframe.grid(row=0, column=1, columnspan=1, sticky='nsew', pady=(10, 0))
         self.buttonframe.grid(row=1, column=1, columnspan=1, sticky='nsew')
@@ -48,8 +56,8 @@ class ECGModel(tk.Frame):
         self.initmenu()
         self.initform()
 
-        self.buildbtn = tk.Button(self.formframe, text='Build',
-            command=self.build_ecg, pady=8)
+        self.buildbtn = ttk.Button(self.formframe, text='Build',
+            command=self.build_ecg)
         self.buildbtn.grid(row=12, column=1, columnspan=2, pady=20)
 
         figure = Figure(figsize=(5, 4), dpi=100)
@@ -57,7 +65,7 @@ class ECGModel(tk.Frame):
         self.ecgcanvas = FigureCanvasTkAgg(figure, self.ecgframe)
         self.ecgcanvas.get_tk_widget().grid()
 
-        toolbarframe = tk.Frame(self.content)
+        toolbarframe = ttk.Frame(self)
         toolbarframe.grid(row=1, column=0, columnspan=12, sticky='w')
         self.toolbar = NavigationToolbar2Tk(self.ecgcanvas, toolbarframe)
         self.toolbar.update()
@@ -88,23 +96,23 @@ class ECGModel(tk.Frame):
         a, b, events = [], [], []
         for i in range(0, 5):
             # create 5 labels and entries for a,b,event
-            lbl_a = tk.Label(self.formframe, text='a{}'.format(i+1))
-            lbl_b = tk.Label(self.formframe, text='b{}'.format(i+1))
-            lbl_event = tk.Label(self.formframe, text='theta{} (pi)'.format(i+1))
+            lbl_a = ttk.Label(self.formframe, text='a{}'.format(i+1))
+            lbl_b = ttk.Label(self.formframe, text='b{}'.format(i+1))
+            lbl_event = ttk.Label(self.formframe, text='theta{} (pi)'.format(i+1))
 
-            entry_a = tk.Entry(self.formframe, validate='key',
+            entry_a = ttk.Entry(self.formframe, validate='key',
                                validatecommand=vcmdAB, width=10)
             entry_a.insert(0, self.preset['default']['a'][i])
             entry_a.label = 'a'
             entry_a.number = i
 
-            entry_b = tk.Entry(self.formframe, validate='key',
+            entry_b = ttk.Entry(self.formframe, validate='key',
                                validatecommand=vcmdAB, width=10)
             entry_b.insert(0, self.preset['default']['b'][i])
             entry_b.label = 'b'
             entry_b.number = i
 
-            entry_event = tk.Entry(self.formframe, validate='key',
+            entry_event = ttk.Entry(self.formframe, validate='key',
                                    validatecommand=vcmdEvt, width=10)
             entry_event.insert(0, self.preset['default']['event'][i])
             entry_event.label = 'event'
@@ -122,8 +130,8 @@ class ECGModel(tk.Frame):
                 entry.grid(row=ro, column=col+1)
 
         # create label+entry for omega, the angular velocity
-        lbl_w = tk.Label(self.formframe, text='w (pi)').grid(row=8, column=0, sticky='e')
-        entry_w = tk.Entry(self.formframe, width=10)
+        lbl_w = ttk.Label(self.formframe, text='w (pi)').grid(row=8, column=0, sticky='e')
+        entry_w = ttk.Entry(self.formframe, width=10)
         entry_w.label = 'omega'
         entry_w.number = 0
         entry_w.insert(0, "2*pi")
@@ -278,5 +286,6 @@ def build_ecg(a=None, b=None, evt=None, w=2*pi):
 
 def main():
     root = tk.Tk()
+
     app = ECGModel()
     root.mainloop()
