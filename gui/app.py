@@ -47,26 +47,27 @@ class ECGModel(ttk.Frame):
 
         self.ecgframe = ttk.Frame(self)
         self.formframe = ttk.Frame(self)
-        self.buttonframe = ttk.Frame(self)
+        toolbarframe = ttk.Frame(self)
 
-        self.ecgframe.grid(row=0, column=0, sticky='nsew', padx=(0, 10), pady=(10, 0))
-        self.formframe.grid(row=0, column=1, columnspan=1, sticky='nsew', pady=(10, 0))
-        self.buttonframe.grid(row=1, column=1, columnspan=1, sticky='nsew')
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=1)
+        self.rowconfigure(0, weight=1)
+        self.rowconfigure(1, weight=1)
+
+        self.ecgframe.grid(column=0, row=0, rowspan=1, sticky='nsew', padx=10, pady=(10, 0))
+        self.formframe.grid(column=1, row=0, sticky='nsew', pady=(10, 0))
+        toolbarframe.grid(column=0, row=1, columnspan=1, padx=(10, 0), sticky='w')
 
         self.initmenu()
         self.initform()
 
-        self.buildbtn = ttk.Button(self.formframe, text='Build',
-            command=self.build_ecg)
-        self.buildbtn.grid(row=12, column=1, columnspan=2, pady=20)
-
+        # create a figure inside ecgframe
         figure = Figure(figsize=(5, 4), dpi=100)
         self.fig = figure.add_subplot(111)
         self.ecgcanvas = FigureCanvasTkAgg(figure, self.ecgframe)
         self.ecgcanvas.get_tk_widget().grid()
 
-        toolbarframe = ttk.Frame(self)
-        toolbarframe.grid(row=1, column=0, columnspan=12, sticky='w')
+        # create a toolbar that tracks the canvas and belongs to toolbarframe
         self.toolbar = NavigationToolbar2Tk(self.ecgcanvas, toolbarframe)
         self.toolbar.update()
 
@@ -126,16 +127,20 @@ class ECGModel(ttk.Frame):
                 # create right aligned labels and entries
                 col = 2 if count % 2 else 0
                 ro = int(count/2)
-                lbl.grid(row=ro, column=col, sticky='e')
-                entry.grid(row=ro, column=col+1)
+                lbl.grid(column=col, row=ro, sticky='w', pady=2)
+                entry.grid(column=col+1, row=ro, pady=2)
 
         # create label+entry for omega, the angular velocity
-        lbl_w = ttk.Label(self.formframe, text='w (pi)').grid(row=8, column=0, sticky='e')
+        lbl_w = ttk.Label(self.formframe, text='w (pi)').grid(row=8, column=0, sticky='w')
         entry_w = ttk.Entry(self.formframe, width=10)
         entry_w.label = 'omega'
         entry_w.number = 0
         entry_w.insert(0, "2*pi")
-        entry_w.grid(row=8, column=1)
+        entry_w.grid(row=8, column=1, pady=2)
+
+        self.buildbtn = ttk.Button(self.formframe, text='Build',
+            command=self.build_ecg)
+        self.buildbtn.grid(column=1, row=9, sticky='s', columnspan=2, pady=20)
 
     def load_preset(self, data):
         for e in self.formframe.winfo_children():
