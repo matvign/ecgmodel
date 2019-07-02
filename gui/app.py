@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
+import json
 import re
 import tkinter as tk
+from tkinter import filedialog
 
 import numexpr as ne
 import numpy as np
@@ -19,6 +21,9 @@ mathops = re.compile(r"^[0-9.+\-*/()pi\b]*$")
 class ECGModel(tk.Frame):
     def __init__(self):
         super().__init__()
+        self.master.title('Embedding in Tk')
+        self.master.geometry('950x450')
+        self.master.option_add('*tearOff', 0)
         self.preset = {
             'default': {
                 'a': [1.2, -5.0, 30.0, -7.5, 0.75],
@@ -30,10 +35,6 @@ class ECGModel(tk.Frame):
         self.initUI()
 
     def initUI(self):
-        self.master.title('Embedding in Tk')
-        self.master.geometry('900x450')
-        self.master.option_add('*tearOff', 0)
-
         self.content = tk.Frame(self.master)
         self.ecgframe = tk.Frame(self.content, bd=4, relief='sunken', height=400, width=500)
         self.formframe = tk.Frame(self.content)
@@ -60,14 +61,17 @@ class ECGModel(tk.Frame):
         toolbarframe.grid(row=1, column=0, columnspan=12, sticky='w')
         self.toolbar = NavigationToolbar2Tk(self.ecgcanvas, toolbarframe)
         self.toolbar.update()
-        # self.build_ecg()
 
     def initmenu(self):
         self.menubar = tk.Menu(self.master)
         filemenu = tk.Menu(self.menubar)
         aboutmenu = tk.Menu(self.menubar)
 
+        filemenu.add_command(label='Import', command=self.import_file)
+        filemenu.add_command(label='Export', command=self.export_file)
+        filemenu.add_command(label='Reset', command=self.reset_form)
         filemenu.add_command(label='Exit', command=self.master.destroy)
+
         aboutmenu.add_command(label='About')
 
         self.menubar.add_cascade(label='File', menu=filemenu)
@@ -81,7 +85,6 @@ class ECGModel(tk.Frame):
         vcmdEvt = (self.register(self.validateEvent),
             '%d', '%i', '%P', '%s', '%S', '%v', '%V', '%W')
 
-        defaults = self.preset['default']
         a, b, events = [], [], []
         for i in range(0, 5):
             # create 5 labels and entries for a,b,event
@@ -91,19 +94,19 @@ class ECGModel(tk.Frame):
 
             entry_a = tk.Entry(self.formframe, validate='key',
                                validatecommand=vcmdAB, width=10)
-            entry_a.insert(0, defaults['a'][i])
+            entry_a.insert(0, self.preset['default']['a'][i])
             entry_a.label = 'a'
             entry_a.number = i
 
             entry_b = tk.Entry(self.formframe, validate='key',
                                validatecommand=vcmdAB, width=10)
-            entry_b.insert(0, defaults['b'][i])
+            entry_b.insert(0, self.preset['default']['b'][i])
             entry_b.label = 'b'
             entry_b.number = i
 
             entry_event = tk.Entry(self.formframe, validate='key',
                                    validatecommand=vcmdEvt, width=10)
-            entry_event.insert(0, defaults['event'][i])
+            entry_event.insert(0, self.preset['default']['event'][i])
             entry_event.label = 'event'
             entry_event.number = i
 
@@ -126,6 +129,96 @@ class ECGModel(tk.Frame):
         entry_w.insert(0, "2*pi")
         entry_w.grid(row=8, column=1)
 
+    def load_preset(self, data):
+        for e in self.formframe.winfo_children():
+            if not isinstance(e, tk.Entry):
+                continue
+
+            label, number = e.label, e.number
+            e.delete(0, tk.END)
+            e.insert(0, data[label][number])
+
+    def reset_form(self):
+        self.load_preset(self.preset['default'])
+        self.build_ecg()
+
+    def get_json(self):
+        err1 = "Cannot export file with empty value"
+        err2 = "Cannot export file with invalid mathematical expression"
+
+        data = {'a': [], 'b': [], 'event': [], 'omega': []}
+        for e in self.formframe.winfo_children():
+            if not isinstance(e, tk.Entry):
+                continue
+
+            label, value = e.label, e.get().replace(' ', '')
+            if not value:
+                tk.messagebox.showerror("Error", err1)
+                return
+            if label == 'a' or label == 'b':
+                i = float(value)
+                data[label].append(i)
+            else:
+                s = helper.pirepl(value)
+                try:
+                    i = ne.evaluate(s)
+                    data[label].append(s)
+                except:
+                    tk.messagebox.showerror("Error", err2)
+        return data
+
+    def import_file(self):
+        '''
+        import json data to use
+        load this information into the forms
+        '''
+        ftypes = [('JSON files', '*.json')]
+        dlg = filedialog.Open(self, filetypes=ftypes)
+        fl = dlg.show()
+        if fl:
+            with open(fl) as f:
+                data = json.load(f)
+            self.load_preset(data)
+            self.build_ecg()
+
+    def export_file(self, filename='ecgdata.json'):
+        '''
+        export json data to use
+        '''
+        print('Exporting data...')
+        with open(filename, "w") as f:
+            json.dump(self.get_json(), f, indent=4)
+
+    def build_ecg(self):
+        errmsg = "Could not interpret mathematical expression"
+        a, b, evt = [], [], []
+
+        for e in self.formframe.winfo_children():
+            if not isinstance(e, tk.Entry):
+                continue
+
+            label, number, value = e.label, e.number, e.get().replace(' ', '')
+            if not value:
+                e.insert(0, self.preset['default'][label][number])
+
+            if label == 'a' or label == 'b':
+                i = float(value)
+                a.append(i) if label == 'a' else b.append(i)
+
+            else:
+                s = helper.pirepl(value)
+                try:
+                    i = ne.evaluate(s)
+                except:
+                    tk.messagebox.showerror("Error", errmsg)
+                    return
+                omega = i if label == 'omega' else evt.append(i)
+
+        self.fig.cla()
+        sol = build_ecg(np.array(a), np.array(b), np.array(evt), omega)
+        self.fig.plot(sol.t, sol.y[2], 'b-')
+        self.ecgcanvas.draw()
+
     def validateEvent(self, d, i, P, s, S, v, V, W):
         # only allow numbers, operators -, +, *, /, round brackets
         # and the keyword pi
@@ -142,38 +235,6 @@ class ECGModel(tk.Frame):
             if not P:
                 return True
             return False
-
-    def build_ecg(self):
-        defaults, inputs = self.preset['default'], []
-        for e in self.formframe.winfo_children():
-            if not isinstance(e, tk.Entry):
-                continue
-
-            if not e.get().strip():
-                e.insert(0, defaults[e.label][e.number])
-
-            if e.label == 'a' or e.label == 'b':
-                i = float(e.get())
-            else:
-                s = helper.pirepl(e.get())
-                try:
-                    i = ne.evaluate(s)
-                except:
-                    tk.messagebox.showerror("Error", "Could not interpret mathematical expression")
-                    return
-
-            inputs.append(i)
-
-        a, b, evt = [], [], []
-        for (ai, bi, ei) in helper.triway(inputs):
-            a.append(ai)
-            b.append(bi)
-            evt.append(ei)
-
-        self.fig.cla()
-        sol = build_ecg(np.array(a), np.array(b), np.array(evt))
-        self.fig.plot(sol.t, sol.y[2], 'b-')
-        self.ecgcanvas.draw()
 
 
 def odefcn(T, Y, a, b, w, events):

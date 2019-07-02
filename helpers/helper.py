@@ -4,15 +4,6 @@ import re
 pi_regx = re.compile(r"(pi\s*|[0-9.]+)(?=(\s*pi|[0-9.]))")
 
 
-def triway(lst):
-    it = iter(lst)
-    while True:
-        try:
-            yield next(it), next(it), next(it)
-        except StopIteration:
-            return
-
-
 def pirepl(word):
     def repl(matchobj):
         if matchobj.group(1).strip() == 'pi':
