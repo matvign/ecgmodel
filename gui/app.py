@@ -41,31 +41,45 @@ class ECGModel(ttk.Frame):
     def initStyles(self):
         self.style = ttk.Style()
         self.style.theme_use("default")
+        self.style.configure("TFrame", bg="#D9D9D9")
 
     def initUI(self):
         self.pack(fill=tk.BOTH, expand=True)
 
-        self.ecgframe = ttk.Frame(self)
-        self.formframe = ttk.Frame(self)
-        toolbarframe = ttk.Frame(self)
-
+        # make grids under master expand to window (except for row 1)
         self.columnconfigure(0, weight=1)
         self.columnconfigure(1, weight=1)
         self.rowconfigure(0, weight=1)
-        self.rowconfigure(1, weight=1)
-
-        self.ecgframe.grid(column=0, row=0, rowspan=1, sticky='nsew', padx=10, pady=(10, 0))
-        self.formframe.grid(column=1, row=0, sticky='nsew', pady=(10, 0))
-        toolbarframe.grid(column=0, row=1, columnspan=1, padx=(10, 0), sticky='w')
+        self.rowconfigure(1, weight=0)
 
         self.initmenu()
-        self.initform()
 
-        # create a figure inside ecgframe
+        # initialize ecgframe into master grid col=0, row=0
+        # have it expand in all directions
+        # make grids under ecgframe expand to the size of this frame
+        # when master is resized, this frame and its contents will also resize
+        self.ecgframe = ttk.Frame(self)
+        self.ecgframe.grid(column=0, row=0, sticky='nsew', padx=10, pady=(10, 0))
+        self.ecgframe.columnconfigure(0, weight=1)
+        self.ecgframe.rowconfigure(0, weight=1)
+
+        # initialize canvas into ecgframe grid col=0, row=0
+        # have it expand in all directions
         figure = Figure(figsize=(5, 4), dpi=100)
         self.fig = figure.add_subplot(111)
         self.ecgcanvas = FigureCanvasTkAgg(figure, self.ecgframe)
-        self.ecgcanvas.get_tk_widget().grid()
+        self.ecgcanvas.get_tk_widget().grid(column=0, row=0, sticky='nsew')
+
+        # initialize formframe into master grid col=1, row=0
+        # have it expand in all directions
+        self.formframe = ttk.Frame(self)
+        self.formframe.grid(column=1, row=0, sticky='ns', pady=(10, 0))
+        for n in range(0, 10):
+            self.formframe.rowconfigure(n, weight=1)
+        self.initform()
+
+        toolbarframe = ttk.Frame(self)
+        toolbarframe.grid(column=0, row=1, padx=(10, 0), sticky='nw')
 
         # create a toolbar that tracks the canvas and belongs to toolbarframe
         self.toolbar = NavigationToolbar2Tk(self.ecgcanvas, toolbarframe)
@@ -98,21 +112,20 @@ class ECGModel(ttk.Frame):
         for i in range(0, 5):
             # create 5 labels and entries for a,b,event
             lbl_a = ttk.Label(self.formframe, text='a{}'.format(i+1))
-            lbl_b = ttk.Label(self.formframe, text='b{}'.format(i+1))
-            lbl_event = ttk.Label(self.formframe, text='theta{} (pi)'.format(i+1))
-
             entry_a = ttk.Entry(self.formframe, validate='key',
                                validatecommand=vcmdAB, width=10)
             entry_a.insert(0, self.preset['default']['a'][i])
             entry_a.label = 'a'
             entry_a.number = i
 
+            lbl_b = ttk.Label(self.formframe, text='b{}'.format(i+1))
             entry_b = ttk.Entry(self.formframe, validate='key',
                                validatecommand=vcmdAB, width=10)
             entry_b.insert(0, self.preset['default']['b'][i])
             entry_b.label = 'b'
             entry_b.number = i
 
+            lbl_event = ttk.Label(self.formframe, text='theta{} (pi)'.format(i+1))
             entry_event = ttk.Entry(self.formframe, validate='key',
                                    validatecommand=vcmdEvt, width=10)
             entry_event.insert(0, self.preset['default']['event'][i])
@@ -123,12 +136,12 @@ class ECGModel(ttk.Frame):
             b.append((lbl_b, entry_b))
             events.append((lbl_event, entry_event))
 
-            for count, (lbl, entry) in enumerate(a+b+events):
-                # create right aligned labels and entries
-                col = 2 if count % 2 else 0
-                ro = int(count/2)
-                lbl.grid(column=col, row=ro, sticky='w', pady=2)
-                entry.grid(column=col+1, row=ro, pady=2)
+        for count, (lbl, entry) in enumerate(a+b+events):
+            # create right aligned labels and entries
+            col = 2 if count % 2 else 0
+            ro = int(count/2)
+            lbl.grid(column=col, row=ro, sticky='w', pady=3)
+            entry.grid(column=col+1, row=ro, pady=3)
 
         # create label+entry for omega, the angular velocity
         lbl_w = ttk.Label(self.formframe, text='w (pi)').grid(row=8, column=0, sticky='w')
@@ -136,7 +149,7 @@ class ECGModel(ttk.Frame):
         entry_w.label = 'omega'
         entry_w.number = 0
         entry_w.insert(0, "2*pi")
-        entry_w.grid(row=8, column=1, pady=2)
+        entry_w.grid(row=8, column=1, pady=3)
 
         self.buildbtn = ttk.Button(self.formframe, text='Build',
             command=self.build_ecg)
@@ -280,7 +293,7 @@ def build_ecg(a=None, b=None, evt=None, w=2*pi):
     if evt is None:
         evt = np.array([-pi/3, -pi/12, 0, pi/12, pi/2])
 
-    tspan = np.array([0.0, 1.0])
+    tspan = np.array([-1.0, 1.0])
     y0 = np.array([-1.0, 0.0, 0.0])
     teval = np.linspace(0, 1, num=100)
     print('building...')
