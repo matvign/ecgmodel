@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-from gui import app
+import sys
+from PyQt5.QtWidgets import QApplication
 
-if __name__ == "__main__":
-    app.main()
+from gui import ecgapp
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ecgprog = ecgapp.ECGModel()
+    sys.exit(app.exec())
