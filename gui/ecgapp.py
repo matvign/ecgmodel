@@ -9,9 +9,9 @@ from matplotlib.backends.qt_compat import QtCore
 from matplotlib.backends.backend_qt5agg import (
     FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
 from PyQt5.QtCore import QRegExp
-from PyQt5.QtGui import QIcon, QDoubleValidator, QRegExpValidator
-from PyQt5.QtWidgets import (qApp, QWidget, QMainWindow, QFileDialog,
-    QMessageBox, QLineEdit, QPushButton, QAction)
+from PyQt5.QtGui import QDoubleValidator, QRegExpValidator
+from PyQt5.QtWidgets import (qApp, QWidget, QDesktopWidget, QMainWindow,
+    QFileDialog, QMessageBox, QLineEdit, QPushButton, QAction)
 from PyQt5.QtWidgets import (QGridLayout, QHBoxLayout, QVBoxLayout,
     QGroupBox, QFormLayout)
 
@@ -26,6 +26,9 @@ class ECGModel(QMainWindow):
 
         self.initUI()
 
+        ag = QDesktopWidget().availableGeometry()
+        sg = QDesktopWidget().screenGeometry()
+        print(ag, sg)
         self.setGeometry(0, 0, 1500, 600)
         self.setWindowTitle('Synthetic ECG Waveform')
         self.show()
