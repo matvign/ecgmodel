@@ -17,16 +17,17 @@ In the future this computer model may be distributed over different platforms fo
 # Setup Instructions
 ## Requirements
 1. Python3.6
-2. pip3
+2. pip
 3. virtualenv
 
 ## Setup
-1. `cd` into root directory (where this file is)
-2. `virtualenv venv`
+1. `git clone` this repository
+2. `cd` into the root of the cloned repo
+2. `virtualenv venv -p python3.6`
 3. `source venv/bin/activate`
 4. `pip install -r requirements.txt`
 
-## Building the application
+## Making Builds
 Run `make build` in the root directory.
 
 ## User setup
