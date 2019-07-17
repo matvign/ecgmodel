@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
-import json
-
 import numexpr as ne
-import numpy as np
-from scipy.integrate import solve_ivp
+
+from numpy import array as nparr
 from matplotlib.figure import Figure
 from matplotlib.backends.qt_compat import QtCore
 from matplotlib.backends.backend_qt5agg import (
@@ -16,8 +14,6 @@ from PyQt5.QtWidgets import (QGridLayout, QHBoxLayout, QVBoxLayout,
     QGroupBox, QFormLayout)
 
 from helpers import helper
-
-pi = np.pi
 
 
 class ECGModel(QMainWindow):
@@ -49,6 +45,7 @@ class ECGModel(QMainWindow):
         self.init_formframe()
 
     def initParams(self):
+        self.exprdict = {'pi': helper.pi}
         self.preset = {
             'defaults': {
                 'a': ["1.2", "-5.0", "30.0", "-7.5", "0.75"],
@@ -212,36 +209,32 @@ class ECGModel(QMainWindow):
         fileName = QFileDialog.getOpenFileName(self, caption=caption, directory='', filter=accepted)
         if not fileName[0]:
             return
-        with open(fileName[0]) as f:
-            data = json.load(f)
-            validate_key = ['a', 'b', 'evt', 'omega']
-            validate_len = ['a', 'b', 'evt']
-            if not all(k in data for k in validate_key):
-                self.show_import_err(fileName[0])
-                return
-            if sum(1 for k in validate_len if len(data[k]) != 5):
-                self.show_import_err(fileName[0])
-                return
-            try:
-                a, b, evt, omega = self.parseParams(data['a'], data['b'], data['evt'], data['omega'][0])
-            except:
-                self.show_import_err(fileName[0])
-                return
+        data = helper.import_json(fileName[0])
+        if not data:
+            self.show_import_err(fileName[0])
+            return
+        try:
+            a, b, evt, omega = self.parseParams(data['a'], data['b'], data['evt'], data['omega'][0])
+        except:
+            self.show_import_err(fileName[0])
+            return
         self.set_entries(data)
         self.buildECG(a, b, evt, omega)
 
     def exportParams(self, filename='ecgdata.json'):
         a, b, evt, omega = self.get_entries()
-        data = {'a': a, 'b': b, 'evt': evt, 'omega': [omega]}
-        print('exporting data...')
-        with open(filename, 'w') as outfile:
-            json.dump(data, outfile, indent=4)
+        helper.export_json(filename, a, b, evt, omega)
+
+    def importECG(self, filename):
+        csvdata = helper.import_csv(filename)
+        for row in csvdata:
+            print(row)
 
     def parseParams(self, a, b, evt, omega):
-        arr_a = np.array([float(i) for i in a])
-        arr_b = np.array([float(i) for i in b])
-        arr_evt = np.array([ne.evaluate(helper.pirepl(i)) for i in evt])
-        f_omega = ne.evaluate(helper.pirepl(omega))
+        arr_a = nparr([float(i) for i in a])
+        arr_b = nparr([float(i) for i in b])
+        arr_evt = nparr([ne.evaluate(helper.pirepl(i), self.exprdict) for i in evt])
+        f_omega = ne.evaluate(helper.pirepl(omega), self.exprdict)
 
         return (arr_a, arr_b, arr_evt, f_omega)
 
@@ -254,45 +247,7 @@ class ECGModel(QMainWindow):
         self.buildECG(arr_a, arr_b, arr_evt, f_omega)
 
     def buildECG(self, a, b, evt, omega):
-        sol = solve_ecg(a, b, evt, omega)
+        sol = helper.solve_ecg(a, b, evt, omega)
         self.ecgplot.clear()
         self.ecgplot.plot(sol.t, sol.y[2], 'b-')
         self.ecgplot.figure.canvas.draw()
-
-
-def solve_ecg(a=None, b=None, evt=None, w=2*pi):
-    def odefcn(T, Y, a, b, w, events):
-        '''
-        Function to solve ODE with scipy.integrate.solve_ivp()
-        Details located here (p291):
-        http://web.mit.edu/~gari/www/papers/ieeetbe50p289.pdf
-        '''
-        x, y, z = Y
-        dy = np.zeros(3)
-
-        theta = np.arctan2(y, x)
-        alpha = 1.0 - np.sqrt(x**2 + y**2)
-        dy[0] = alpha*x - w*y
-        dy[1] = alpha*y + w*x
-
-        dy[2] = -(z - 0)
-        for i in range(0, 5):
-            dtheta = theta - events[i]
-            dy[2] -= a[i] * dtheta * np.exp(-(dtheta**2) / (2 * b[i]**2))
-
-        return dy
-
-    if a is None:
-        a = np.array([1.2, -5.0, 30.0, -7.5, 0.75])
-    if b is None:
-        b = np.array([0.25, 0.1, 0.1, 0.1, 0.4])
-    if evt is None:
-        evt = np.array([-pi/3, -pi/12, 0, pi/12, pi/2])
-
-    tspan = np.array([-1.0, 1.0])
-    y0 = np.array([-1.0, 0.0, 0.0])
-    teval = np.linspace(0, 1, num=100)
-    print('building...')
-    sol = solve_ivp(fun=lambda t, y: odefcn(t, y, a, b, w, evt),
-                    t_span=tspan, y0=y0, t_eval=teval)
-    return sol
