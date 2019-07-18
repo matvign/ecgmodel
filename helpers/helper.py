@@ -39,7 +39,7 @@ def export_json(filename, a, b, evt, omega):
         json.dump(data, outfile, indent=4)
 
 
-def import_csv(file, timeframe=2):
+def import_csv(file, timeframe):
     csvdata = np.genfromtxt(file, delimiter=',', skip_header=2)
     return csvdata[csvdata[:, 0] < timeframe]
 

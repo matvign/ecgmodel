@@ -24,7 +24,6 @@ class ECGModel(QMainWindow):
 
         ag = QDesktopWidget().availableGeometry()
         sg = QDesktopWidget().screenGeometry()
-        print(ag, sg)
         self.setGeometry(0, 0, 1500, 600)
         self.setWindowTitle('Synthetic ECG Waveform')
         self.show()
@@ -46,6 +45,14 @@ class ECGModel(QMainWindow):
 
     def initParams(self):
         self.exprdict = {'pi': helper.pi}
+        self.axparams = {
+            'axis': 'y',
+            'which': 'both',
+            'top': False, 'bottom': False,
+            'left': False, 'right': False,
+            'labeltop': False, 'labelbottom': False,
+            'labelleft': False, 'labelright': False,
+        }
         self.preset = {
             'defaults': {
                 'a': ["1.2", "-5.0", "30.0", "-7.5", "0.75"],
@@ -92,7 +99,15 @@ class ECGModel(QMainWindow):
         self._grid.addWidget(ecgframe, 0, 0)
         self.addToolBar(QtCore.Qt.BottomToolBarArea,
                         NavigationToolbar(ecgframe, self))
-        self.ecgplot = ecgframe.figure.subplots()
+        self.ax1 = ecgframe.figure.subplots()
+        self.ax1.set_xlabel('time (s)')
+        self.ax1.set_ylabel('mV')
+
+        self.ax2 = self.ax1.twinx()
+        self.ax2.tick_params(**self.axparams)
+
+        data = self.importECG('aami-ec13-3a.csv')
+        self.ax2.plot(data[0:, 0], data[0:, 1], 'r-')
 
     def init_formframe(self):
         def make_entry(vdtr):
@@ -225,10 +240,8 @@ class ECGModel(QMainWindow):
         a, b, evt, omega = self.get_entries()
         helper.export_json(filename, a, b, evt, omega)
 
-    def importECG(self, filename):
-        csvdata = helper.import_csv(filename)
-        for row in csvdata:
-            print(row)
+    def importECG(self, filename, timeframe=1.5):
+        return helper.import_csv(filename, timeframe)
 
     def parseParams(self, a, b, evt, omega):
         arr_a = nparr([float(i) for i in a])
@@ -248,6 +261,8 @@ class ECGModel(QMainWindow):
 
     def buildECG(self, a, b, evt, omega):
         sol = helper.solve_ecg(a, b, evt, omega)
-        self.ecgplot.clear()
-        self.ecgplot.plot(sol.t, sol.y[2], 'b-')
-        self.ecgplot.figure.canvas.draw()
+        kids = self.ax1.get_lines()
+        if len(kids) == 1:
+            kids[0].remove()
+        res = self.ax1.plot(sol.t, sol.y[2], 'b-')
+        self.ax1.figure.canvas.draw()
