@@ -8,10 +8,10 @@ from matplotlib.backends.backend_qt5agg import (
     FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
 from PyQt5.QtCore import QRegExp
 from PyQt5.QtGui import QDoubleValidator, QRegExpValidator
-from PyQt5.QtWidgets import (qApp, QWidget, QDesktopWidget, QMainWindow,
-    QFileDialog, QMessageBox, QLineEdit, QPushButton, QAction)
-from PyQt5.QtWidgets import (QGridLayout, QHBoxLayout, QVBoxLayout,
-    QGroupBox, QFormLayout)
+from PyQt5.QtWidgets import (qApp, QAction, QDesktopWidget, QFileDialog,
+    QLineEdit, QMainWindow, QMenu, QMessageBox, QPushButton, QWidget)
+from PyQt5.QtWidgets import (QFormLayout, QGridLayout, QGroupBox,
+    QHBoxLayout, QVBoxLayout)
 
 from helpers import helper
 
@@ -68,10 +68,17 @@ class ECGModel(QMainWindow):
 
         filemenu = menubar.addMenu('File')
 
-        importAction = QAction('Import', self)
-        importAction.setShortcut('Ctrl+O')
-        importAction.setStatusTip('Import file for parameters')
-        importAction.triggered.connect(self.importParams)
+        importmenu = QMenu('Import', self)
+        importparam = QAction('Import Parameters', self)
+        importparam.setShortcut('Ctrl+O')
+        importparam.triggered.connect(self.importParams)
+
+        importsample = QAction('Import sample', self)
+        importsample.setShortcut('Ctrl+Shift+O')
+        importsample.setStatusTip('Import sample ECG data')
+        importsample.triggered.connect(self.importSample)
+        importmenu.addAction(importparam)
+        importmenu.addAction(importsample)
 
         exportAction = QAction('Export', self)
         exportAction.setShortcut('Ctrl+S')
@@ -88,7 +95,7 @@ class ECGModel(QMainWindow):
         exitAction.setStatusTip('Exit application')
         exitAction.triggered.connect(qApp.quit)
 
-        filemenu.addAction(importAction)
+        filemenu.addMenu(importmenu)
         filemenu.addAction(exportAction)
         filemenu.addAction(resetAction)
         filemenu.addAction(exitAction)
@@ -106,9 +113,6 @@ class ECGModel(QMainWindow):
 
         self.ax2 = self.ax1.twinx()
         self.ax2.tick_params(**self.axparams)
-
-        data = self.importECG('aami-ec13-3a.csv')
-        self.ax2.plot(data[0:, 0], data[0:, 1], 'r-')
 
     def init_formframe(self):
         def make_entry(vdtr):
@@ -238,6 +242,20 @@ class ECGModel(QMainWindow):
         self.set_entries(data)
         self.buildECG(a, b, evt, omega)
 
+    def importSample(self, filename, timeframe=1.5):
+        caption = 'Import ECG Sample'
+        f_filter = 'CSV (*.csv)'
+        path = ''
+        fileName = QFileDialog.getOpenFileName(self, caption, path, f_filter)
+        if not fileName[0]:
+            return
+        data = helper.import_csv(fileName[0], timeframe)
+        if data is None:
+            helper.show_import_err(fileName[0])
+
+        self.ax2.plot(data[0:, 0], data[0:, 1], 'r-')
+        self.ax2.figure.canvas.draw()
+
     def exportParams(self, filename='ecgdata.json'):
         caption = 'Export Parameters'
         path = 'ecgdata.json'
@@ -246,9 +264,6 @@ class ECGModel(QMainWindow):
 
         a, b, evt, omega = self.get_entries()
         helper.export_json(filename, a, b, evt, omega)
-
-    def importECG(self, filename, timeframe=1.5):
-        return helper.import_csv(filename, timeframe)
 
     def parseParams(self, a, b, evt, omega):
         arr_a = nparr([float(i) for i in a])

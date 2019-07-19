@@ -41,6 +41,10 @@ def export_json(filename, a, b, evt, omega):
 
 def import_csv(file, timeframe):
     csvdata = np.genfromtxt(file, delimiter=',', skip_header=2)
+    if csvdata.ndim != 2:
+        return None
+    if csvdata.shape[0] == 0 or csvdata.shape[1] != 2:
+        return None
     return csvdata[csvdata[:, 0] < timeframe]
 
 
