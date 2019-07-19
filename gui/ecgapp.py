@@ -293,19 +293,27 @@ class ECGModel(QMainWindow):
         a, b, evt, omega = self.get_entries()
         helper.export_json(filename, a, b, evt, omega)
 
+    def recalc_axis(self):
+        self.ax1.relim()
+        self.ax1.autoscale_view()
+        self.ax2.relim()
+        self.ax2.autoscale_view()
+
+    def removeEst(self):
+        for l in self.ax1.get_lines():
+            l.remove()
+        self.recalc_axis()
+        self.ax1.figure.canvas.draw()
+
     def removeSample(self):
         for l in self.ax2.get_lines():
             l.remove()
+        self.recalc_axis()
         self.ax2.figure.canvas.draw()
 
     def removeAll(self):
         self.removeSample()
         self.removeEst()
-
-    def removeEst(self):
-        for l in self.ax1.get_lines():
-            l.remove()
-        self.ax1.figure.canvas.draw()
 
     def parseParams(self, a, b, evt, omega):
         arr_a = nparr([float(i) for i in a])
@@ -324,7 +332,7 @@ class ECGModel(QMainWindow):
         self.buildECG(arr_a, arr_b, arr_evt, f_omega)
 
     def buildECG(self, a, b, evt, omega):
-        sol = helper.solve_ecg(a, b, evt, omega)
         self.removeEst()
+        sol = helper.solve_ecg(a, b, evt, omega)
         self.ax1.plot(sol.t, sol.y[2], 'b-')
         self.ax1.figure.canvas.draw()
