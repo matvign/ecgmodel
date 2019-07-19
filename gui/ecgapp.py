@@ -184,7 +184,7 @@ class ECGModel(QMainWindow):
         vbox.addLayout(self.formlayout)
         vbox.addWidget(button)
 
-        self.formframe = QGroupBox('Input Parameters')
+        self.formframe = QGroupBox('Input Parameters:')
         self.formframe.setLayout(vbox)
 
         self._grid.addWidget(self.formframe, 0, 1)

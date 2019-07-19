@@ -1,7 +1,7 @@
 #!/usr/bin/env
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QDialog, QDialogButtonBox, QLabel, QSlider,
-                             QVBoxLayout)
+from PyQt5.QtWidgets import (QDialog, QDialogButtonBox, QGroupBox, QLabel,
+                             QSlider, QVBoxLayout)
 
 
 class SliderDialog(QDialog):
@@ -10,9 +10,10 @@ class SliderDialog(QDialog):
         self.tmin = tmin
         self.tmax = tmax
 
-        # widget for a time slider
-        layout = QVBoxLayout(self)
+        self.setWindowTitle('Select timeframe')
+        self.setMinimumSize(550, 200)
 
+        layout = QVBoxLayout(self)
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setMinimum(tmin)
         self.slider.setMaximum(tmax)
@@ -23,20 +24,22 @@ class SliderDialog(QDialog):
         # self.slider.setFocusPolicy(Qt.StrongFocus)
         self.slider.valueChanged.connect(self.valuechange)
 
-        self.label = QLabel(str(self.tmin))
-
-        layout.addWidget(self.label)
-        layout.addWidget(self.slider)
+        self.label = QLabel("t = {} (s)".format(self.tmin))
 
         buttons = QDialogButtonBox(Qt.Horizontal, self)
         buttons.addButton(QDialogButtonBox.Ok)
-        buttons.addButton(QDialogButtonBox.Reset)
         buttons.addButton(QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.accept)
-        # buttons.reset.connect(self.reset)
         buttons.rejected.connect(self.reject)
 
-        layout.addWidget(buttons)
+        sliderlayout = QVBoxLayout()
+        sliderlayout.addWidget(self.label)
+        sliderlayout.addWidget(self.slider)
+        sliderlayout.addWidget(buttons)
+
+        groupbox = QGroupBox('Select timeframe of sample:')
+        groupbox.setLayout(sliderlayout)
+        layout.addWidget(groupbox)
 
     def reset(self):
         self.label.setText(str(self.tmin))
@@ -44,7 +47,7 @@ class SliderDialog(QDialog):
 
     def valuechange(self):
         tframe = self.slider.value()
-        self.label.setText(str(tframe))
+        self.label.setText("t = {} (s)".format(tframe))
 
     def timeFrame(self):
         return self.slider.value()
