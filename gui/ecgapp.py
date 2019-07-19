@@ -73,7 +73,7 @@ class ECGModel(QMainWindow):
         importparam.setShortcut('Ctrl+O')
         importparam.triggered.connect(self.importParams)
 
-        importsample = QAction('Import sample', self)
+        importsample = QAction('Import Sample', self)
         importsample.setShortcut('Ctrl+Shift+O')
         importsample.setStatusTip('Import sample ECG data')
         importsample.triggered.connect(self.importSample)
@@ -90,6 +90,18 @@ class ECGModel(QMainWindow):
         resetAction.setStatusTip('Reset current parameters')
         resetAction.triggered.connect(self.defaultParams)
 
+        clearSample = QAction('Clear Sample', self)
+        clearSample.setStatusTip('Remove ECG sample')
+        clearSample.triggered.connect(self.removeSample)
+
+        clearEstimate = QAction('Clear Estimate', self)
+        clearEstimate.setStatusTip('Remove ECG estimate')
+        clearEstimate.triggered.connect(self.removeEst)
+
+        clearAll = QAction('Clear All', self)
+        clearAll.setStatusTip('Clear all graphs')
+        clearAll.triggered.connect(self.removeAll)
+
         exitAction = QAction('Exit', self)
         exitAction.setShortcut('Ctrl+Q')
         exitAction.setStatusTip('Exit application')
@@ -98,6 +110,9 @@ class ECGModel(QMainWindow):
         filemenu.addMenu(importmenu)
         filemenu.addAction(exportAction)
         filemenu.addAction(resetAction)
+        filemenu.addAction(clearSample)
+        filemenu.addAction(clearEstimate)
+        filemenu.addAction(clearAll)
         filemenu.addAction(exitAction)
 
         aboutmenu = menubar.addMenu('About')
@@ -253,6 +268,7 @@ class ECGModel(QMainWindow):
         if data is None:
             helper.show_import_err(fileName[0])
 
+        self.removeSample()
         self.ax2.plot(data[0:, 0], data[0:, 1], 'r-')
         self.ax2.figure.canvas.draw()
 
@@ -264,6 +280,20 @@ class ECGModel(QMainWindow):
 
         a, b, evt, omega = self.get_entries()
         helper.export_json(filename, a, b, evt, omega)
+
+    def removeSample(self):
+        for l in self.ax2.get_lines():
+            l.remove()
+        self.ax2.figure.canvas.draw()
+
+    def removeAll(self):
+        self.removeSample()
+        self.removeEst()
+
+    def removeEst(self):
+        for l in self.ax1.get_lines():
+            l.remove()
+        self.ax1.figure.canvas.draw()
 
     def parseParams(self, a, b, evt, omega):
         arr_a = nparr([float(i) for i in a])
@@ -283,8 +313,6 @@ class ECGModel(QMainWindow):
 
     def buildECG(self, a, b, evt, omega):
         sol = helper.solve_ecg(a, b, evt, omega)
-        kids = self.ax1.get_lines()
-        if len(kids) == 1:
-            kids[0].remove()
-        res = self.ax1.plot(sol.t, sol.y[2], 'b-')
+        self.removeEst()
+        self.ax1.plot(sol.t, sol.y[2], 'b-')
         self.ax1.figure.canvas.draw()
