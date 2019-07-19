@@ -121,7 +121,9 @@ class ECGModel(QMainWindow):
         aboutmenu = menubar.addMenu('About')
 
     def init_ecgframe(self):
-        ecgframe = FigureCanvas(Figure(figsize=(5, 3)))
+        fig = Figure(figsize=(5, 3))
+        fig.suptitle('Electrocardiogram Simulation')
+        ecgframe = FigureCanvas(fig)
         self._grid.addWidget(ecgframe, 0, 0)
         self.addToolBar(QtCore.Qt.BottomToolBarArea,
                         NavigationToolbar(ecgframe, self))
