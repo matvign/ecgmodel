@@ -39,13 +39,18 @@ def export_json(filename, a, b, evt, omega):
         json.dump(data, outfile, indent=4)
 
 
-def import_csv(file, timeframe):
+def import_csv(file):
     csvdata = np.genfromtxt(file, delimiter=',', skip_header=2)
     if csvdata.ndim != 2:
         return None
     if csvdata.shape[0] == 0 or csvdata.shape[1] != 2:
         return None
-    return csvdata[csvdata[:, 0] < timeframe]
+    return (csvdata, np.amax(csvdata[:, 0]))
+    # return csvdata[csvdata[:, 0] < timeframe]
+
+
+def filter_timeframe(data, timeframe):
+    return data[data[:, 0] < timeframe]
 
 
 def solve_ecg(a=None, b=None, evt=None, w=2*np.pi):

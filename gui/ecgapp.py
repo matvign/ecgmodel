@@ -2,17 +2,20 @@
 import numexpr as ne
 
 from numpy import array as nparr
-from matplotlib.figure import Figure
-from matplotlib.backends.qt_compat import QtCore
+from matplotlib.backends.backend_qt5agg import FigureCanvas
 from matplotlib.backends.backend_qt5agg import (
-    FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
+    NavigationToolbar2QT as NavigationToolbar)
+from matplotlib.backends.qt_compat import QtCore
+from matplotlib.figure import Figure
+
 from PyQt5.QtCore import QRegExp
 from PyQt5.QtGui import QDoubleValidator, QRegExpValidator
-from PyQt5.QtWidgets import (qApp, QAction, QDesktopWidget, QFileDialog,
-    QLineEdit, QMainWindow, QMenu, QMessageBox, QPushButton, QWidget)
-from PyQt5.QtWidgets import (QFormLayout, QGridLayout, QGroupBox,
-    QHBoxLayout, QVBoxLayout)
+from PyQt5.QtWidgets import (QAction, QDesktopWidget, QFileDialog, QFormLayout,
+                             QGridLayout, QGroupBox, QHBoxLayout, QLineEdit,
+                             QMainWindow, QMenu, QMessageBox, QPushButton,
+                             QVBoxLayout, QWidget, qApp)
 
+from gui import slider
 from helpers import helper
 
 
@@ -227,6 +230,9 @@ class ECGModel(QMainWindow):
         msg.setText('Import Error: invalid file contains invalid data')
         msg.exec()
 
+    def show_slider_timeframe(self, tmax=1):
+        return slider.SliderDialog.getTimeFrame(self, tmax=tmax)
+
     def show_build_err(self):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Information)
@@ -264,9 +270,15 @@ class ECGModel(QMainWindow):
         fileName = QFileDialog.getOpenFileName(self, caption, path, f_filter)
         if not fileName[0]:
             return
-        data = helper.import_csv(fileName[0], timeframe)
-        if data is None:
+        samples, tmax = helper.import_csv(fileName[0])
+        print(tmax)
+        if samples is None:
             helper.show_import_err(fileName[0])
+        tframe, res = self.show_slider_timeframe(tmax=tmax)
+        if not res:
+            return
+
+        data = helper.filter_timeframe(samples, tframe)
 
         self.removeSample()
         self.ax2.plot(data[0:, 0], data[0:, 1], 'r-')
