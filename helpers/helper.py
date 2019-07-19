@@ -23,7 +23,7 @@ def pirepl(word):
 
 def import_json(file):
     with open(file) as f:
-        data = json.load()
+        data = json.load(f)
         validate_key = ['a', 'b', 'evt', 'omega']
         validate_len = ['a', 'b', 'evt']
         if not all(k in data for k in validate_key):

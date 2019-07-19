@@ -24,7 +24,8 @@ class ECGModel(QMainWindow):
 
         ag = QDesktopWidget().availableGeometry()
         sg = QDesktopWidget().screenGeometry()
-        self.setGeometry(0, 0, 1500, 600)
+        self.setMinimumSize(1280, 550)
+        # self.setGeometry(0, 0, 1500, 600)
         self.setWindowTitle('Synthetic ECG Waveform')
         self.show()
 
