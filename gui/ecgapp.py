@@ -219,9 +219,10 @@ class ECGModel(QMainWindow):
         self.set_entries(data)
 
     def importParams(self):
-        caption = 'Open File'
-        accepted = 'JSON (*.json)'
-        fileName = QFileDialog.getOpenFileName(self, caption=caption, directory='', filter=accepted)
+        caption = 'Import Parameters'
+        f_filter = 'JSON (*.json)'
+        path = ''
+        fileName = QFileDialog.getOpenFileName(self, caption, path, f_filter)
         if not fileName[0]:
             return
         data = helper.import_json(fileName[0])
@@ -237,6 +238,11 @@ class ECGModel(QMainWindow):
         self.buildECG(a, b, evt, omega)
 
     def exportParams(self, filename='ecgdata.json'):
+        caption = 'Export Parameters'
+        path = 'ecgdata.json'
+        f_filter = 'JSON (*.json)'
+        fileName = QFileDialog.getSaveFileName(self, caption, path, f_filter)
+
         a, b, evt, omega = self.get_entries()
         helper.export_json(filename, a, b, evt, omega)
 
