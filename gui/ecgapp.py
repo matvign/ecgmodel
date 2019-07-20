@@ -121,18 +121,23 @@ class ECGModel(QMainWindow):
         aboutmenu = menubar.addMenu('About')
 
     def init_ecgframe(self):
-        fig = Figure(figsize=(5, 3))
-        fig.suptitle('Electrocardiogram Simulation')
-        ecgframe = FigureCanvas(fig)
-        self._grid.addWidget(ecgframe, 0, 0)
-        self.addToolBar(QtCore.Qt.BottomToolBarArea,
-                        NavigationToolbar(ecgframe, self))
-        self.ax1 = ecgframe.figure.subplots()
+        self.fig = Figure(figsize=(5, 3))
+        self.fig.suptitle('Electrocardiogram Simulation')
+        self.ax1 = self.fig.add_subplot(111, label='estimate')
         self.ax1.set_xlabel('time (s)')
         self.ax1.set_ylabel('mV')
 
         self.ax2 = self.ax1.twinx()
         self.ax2.tick_params(**self.axparams)
+        self.fig.add_axes(self.ax2, label='sample')
+
+        print(self.fig.get_axes())
+        print(self.fig.gca())
+
+        ecgframe = FigureCanvas(self.fig)
+        self._grid.addWidget(ecgframe, 0, 0)
+        self.addToolBar(QtCore.Qt.BottomToolBarArea,
+                        NavigationToolbar(ecgframe, self))
 
     def init_formframe(self):
         def make_entry(vdtr):
@@ -273,7 +278,6 @@ class ECGModel(QMainWindow):
         if not fileName[0]:
             return
         samples, tmax = helper.import_csv(fileName[0])
-        print(tmax)
         if samples is None:
             helper.show_import_err(fileName[0])
         tframe, res = self.show_slider_timeframe(tmax=tmax)
@@ -283,7 +287,8 @@ class ECGModel(QMainWindow):
         data = helper.filter_timeframe(samples, tframe)
 
         self.removeSample()
-        self.ax2.plot(data[0:, 0], data[0:, 1], 'r-')
+        self.ax2.plot(data[0:, 0], data[0:, 1], 'r--', label='sample')
+        self.recalc_legend()
         self.ax2.figure.canvas.draw()
 
     def exportParams(self, filename='ecgdata.json'):
@@ -295,6 +300,16 @@ class ECGModel(QMainWindow):
         a, b, evt, omega = self.get_entries()
         helper.export_json(filename, a, b, evt, omega)
 
+    def recalc_legend(self):
+        ax1_hndl, ax1_lbl = self.ax1.get_legend_handles_labels()
+        ax2_hndl, ax2_lbl = self.ax2.get_legend_handles_labels()
+        handles = ax1_hndl + ax2_hndl
+        labels = ax1_lbl + ax2_lbl
+        if not handles and self.ax1.get_legend():
+            self.ax1.get_legend().remove()
+            return
+        self.ax1.legend(handles=handles, labels=labels)
+
     def recalc_axis(self):
         self.ax1.relim()
         self.ax1.autoscale_view()
@@ -305,12 +320,14 @@ class ECGModel(QMainWindow):
         for l in self.ax1.get_lines():
             l.remove()
         self.recalc_axis()
+        self.recalc_legend()
         self.ax1.figure.canvas.draw()
 
     def removeSample(self):
         for l in self.ax2.get_lines():
             l.remove()
         self.recalc_axis()
+        self.recalc_legend()
         self.ax2.figure.canvas.draw()
 
     def removeAll(self):
@@ -336,5 +353,6 @@ class ECGModel(QMainWindow):
     def buildECG(self, a, b, evt, omega):
         self.removeEst()
         sol = helper.solve_ecg(a, b, evt, omega)
-        self.ax1.plot(sol.t, sol.y[2], 'b-')
+        self.ax1.plot(sol.t, sol.y[2], 'b-', label='estimate')
+        self.recalc_legend()
         self.ax1.figure.canvas.draw()
