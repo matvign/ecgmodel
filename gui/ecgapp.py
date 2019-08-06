@@ -296,9 +296,10 @@ class ECGModel(QMainWindow):
         path = 'ecgdata.json'
         f_filter = 'JSON (*.json)'
         fileName = QFileDialog.getSaveFileName(self, caption, path, f_filter)
-
+        if not fileName[0]:
+            return
         a, b, evt, omega = self.get_entries()
-        helper.export_json(filename, a, b, evt, omega)
+        helper.export_json(fileName[0], a, b, evt, omega)
 
     def recalc_legend(self):
         ax1_hndl, ax1_lbl = self.ax1.get_legend_handles_labels()
