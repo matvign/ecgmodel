@@ -38,104 +38,40 @@ need probability to add up to one.
 ## Kalman Filter
 The Kalman filter is a Bayesian filter that uses gaussian distributions.
 
-A gaussian distribution states that random samples converge on a point. 
+A gaussian distribution converges on a point given random samples.
 This can be applied to random noise by using an average.
 
-## State
-The state is a list of variables for the current state of the system. 
-
-A state for the system at k would be:
+### Terminology and Symbols
 ```
-x_k = [position velocity]
-```
-where x_k contains the mean value for our gaussian distribution.
+x_k: state
+y_k/P_k: covariance matrix, observation vector/matrix
 
+w_k: process noise from prediction step
+Q_k: covariance matrix for prediction step
 
-## Covariance matrix
-We may have a correlation between the variables in our state. This information is captured in
-what is called a covariance matrix.
+v_k: measurement noise from update step
+R_k: covariance matrix for update step
 
-The covariance matrix is in essence storing the values of our `sigma2` (variance) into a matrix.
+f(): process model wo/noise
+g(): measurement wo/noise
 
-A covariance matrix for our example above is:
-```
-pp pv
-vp vv
+x_hat: desired reference point for linear estimate
+y_hat: desired reference point for linear estimate
+z_hat: desired reference point for linear estimate
 
-where
-    pp = pos pos, pv = pos vel
-    vp = vel pos, vv = vel vel
-```
+Underline: no specific meaning
+Overline: mean
+Transpose (T): convert row into column e.g. [1 2 3] => [1; 2; 3]
+Hat (^): variable with desired reference point
+Prior (-): estimate of the state vector using previous states
+Post (+): estimate after performing update step
 
-
-## Prediction matrix
-The kalman filter considers the k-1th state and predicts the a state for the kth.
-
-A prediction matrix is required to move the k-1th state to the kth state.
-Suppose we have a simple kinematic formula as follows:
-```
-p_k = p_k-1 + timechange v_k-1
-v_k =         v_k-1
-```
-
-We set the values of our current state to one. So p_k-1 and v_k-1 = 1
-```
-1 timechange
-0          1
-```
-This is our prediction matrix.
-
-In addition to updating the state we also need to update our covariance matrix.
-```
-x_k = F_k * x_k-1
-P_k = F_k * P_k-1 * F_k^T
-where
-    ^T indicates the identity of the matrix.
+The state is [x y z]
+The observation is [0 0 1] * x_k + v_k with R_k = E{v_k v_k^T}
 ```
 
 
-## External influence
-External influence is added onto the state. An external influence consists of a control
-matrix and a control vector.
-```
-x_k = F_k * x_k-1 + B_k * u_k
-```
-
-
-## External uncertainty
-External influence is something that we already know about. External uncertainty is a force
-that we don't know about.
-
-This external uncertainty is added onto our covariance matrix.
-```
-P_k = F_k * P_k-1 * F_k^T + Q_k
-```
-
-
-## Refinement with Measurements
-We can refine an estimate by providing measurements. These readings follow the same principle as the previous section. 
-i.e. a state, covariance matrix and prediction matrix.
-
-```
-z_k = H_k * x_k
-R_k = H_k * P_k * H_k^T
-where
-    H_k is the prediction matrix for the readings.
-```
-
-At this point we have two gaussian blobs, one from an estimate and another from measurements.
-
-In order to refine our guess we should make a new guess which is combined from our estimate
-and measurements.
-What we end up doing is multiplying both gaussian blobs together to produce an overlap.
-
-The rest is a bit fuzzy. We can find a kalman gain instantly or we can use some method that calculates the mean. Not sure what the correct math behind it is.
-
-## Terminology and Symbols
-x_bar: x with a bar overtop, usually either mean or prior (before measurement adjustment)
-
-
-## References
+# References
 The contents come from the following articles:
 1. [Filter theory](https://nbviewer.jupyter.org/github/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/table_of_contents.ipynb
 )
