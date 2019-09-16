@@ -25,7 +25,7 @@ error is some uncertainty about the system.
 3. Take measurement of state
 4. Adjust predicted state using measurement
 
-## Bayesian Filter
+# Bayesian Filter
 A type of alpha-beta filter that utilizes probability. Create an array of
 probabilities of an event occuring. 
 
@@ -35,16 +35,78 @@ Proceed with next measurement and update your previous state using probability.
 When adding noise to probabilities also normalize the entire array, since we 
 need probability to add up to one.
 
-## Kalman Filter
+# Kalman Filter
 The Kalman filter is a Bayesian filter that uses gaussian distributions.
 
 A gaussian distribution converges on a point given random samples.
 This can be applied to random noise by using an average.
 
+## Designing Kalman Filter
+A Kalman Filter has two steps: predict and update.
+
+### Predict
+We have a gaussian that is used to predict the transition from our current state to the next state.  
+The gaussian consists of a state and a covariant matrix.
+
+The prediction for the next state and covariant matrix is performed with a system of linear equations in matrix form `F_k`.
+```
+x_k = x_k-1 * F_k
+P_k = F_k * P_k-1 * F_k^T
+```
+
+#### External Influence
+External influence is a known effect that occurs on the system e.g. acceleration from a car throttle.
+
+External influence is added onto the state. The variables for external influence are placed inside a vector `u_k` and modelled with a matrix `B_k` (which presents a system of linear equations).
+```
+x_k = F_k * x_k-1 + B_k * u_k
+```
+where `u_k` contains the external influence e.g. [ a ]
+
+#### External uncertainty
+External uncertainty is an unknown effect on the system e.g. noise turbulence, etc.
+
+External uncertainty is modelled with a matrix `Q_k` that is added directly to the covariance matrix.
+
+In total we have the following situation for the predict step:
+```
+x_k = F_k * x_k-1 + B_k * u_k
+P_k = F_k * P_k-1 * F_k^T + Q_k
+```
+
+
+### Update step
+The update step is another gaussian consisting of a state `z_k` and covariant matrix `R_k`.
+```
+z_k = H_k * x_k
+R_k = H_k * P_k * H_k^T
+```
+`H_k` is the matrix used to model the measurement.
+
+The final step of updating requires a kalman filter gain. The kalman filter gain requires the values of `H_k`, `R_k` and `z_k` to find a value between the two gaussians.
+
+
+## ECG Extended Kalman Filter
+The Extended Kalman Filter consists of a predict and update step.
+
+The predict step uses a function f to predict the next state `x_k` and covariance matrix `P_k`.
+
+The function `f` is the system of ordinary differential equations (ODEs) introduced in the McSharry ECG model.
+The matrices `A_k` and `F_k` are partial derivatives of our ODE wrt state variables and noise.
+
+The update step takes the current predicted state of our system and produces an output `_y_k` from a function `g`.
+
+In our case `_y_k` is equal to the output of our system, which is the z-axis for our ECG amplitude.
+
+The function `g` is represented by `s_k = [0 0 1]X_k + v_k`.
+
+Our observation `y_k` is used in equation 5.
+
+
 ### Terminology and Symbols
 ```
 x_k: state
-y_k/P_k: covariance matrix, observation vector/matrix
+P_k: covariance matrix, observation vector/matrix
 
 w_k: process noise from prediction step
 Q_k: covariance matrix for prediction step
@@ -52,8 +114,8 @@ Q_k: covariance matrix for prediction step
 v_k: measurement noise from update step
 R_k: covariance matrix for update step
 
-f(): process model wo/noise
-g(): measurement wo/noise
+f(): ODE
+g(): ???
 
 x_hat: desired reference point for linear estimate
 y_hat: desired reference point for linear estimate
@@ -75,5 +137,5 @@ The observation is [0 0 1] * x_k + v_k with R_k = E{v_k v_k^T}
 The contents come from the following articles:
 1. [Filter theory](https://nbviewer.jupyter.org/github/rlabbe/Kalman-and-Bayesian-Filters-in-Python/blob/master/table_of_contents.ipynb
 )
-2. [Kalman Filter Step By Step](https://towardsdatascience.com/kalman-filters-a-step-by-step-implementation-guide-in-python-91e7e123b968)
-3. [How a Kalman Filter Works](https://www.bzarg.com/p/how-a-kalman-filter-works-in-pictures/)
+2. [How a Kalman Filter Works](https://www.bzarg.com/p/how-a-kalman-filter-works-in-pictures/)s
+3. [Kalman Filter Step By Step](https://towardsdatascience.com/kalman-filters-a-step-by-step-implementation-guide-in-python-91e7e123b968)
