@@ -25,8 +25,12 @@ class ECGModel(QMainWindow):
 
         self.initUI()
 
+        # TODO: Find better way to calculate screen geometry
+
         ag = QDesktopWidget().availableGeometry()
         sg = QDesktopWidget().screenGeometry()
+        print(ag, sg)
+
         self.setMinimumSize(1280, 550)
         # self.setGeometry(0, 0, 1500, 600)
         self.setWindowTitle('Synthetic ECG Waveform')
@@ -127,9 +131,9 @@ class ECGModel(QMainWindow):
         self.ax1.set_xlabel('time (s)')
         self.ax1.set_ylabel('mV')
 
-        self.ax2 = self.ax1.twinx()
-        self.ax2.tick_params(**self.axparams)
-        self.fig.add_axes(self.ax2, label='sample')
+        # self.ax2 = self.ax1.twinx()
+        # self.ax2.tick_params(**self.axparams)
+        # self.fig.add_axes(self.ax2, label='sample')
 
         print(self.fig.get_axes())
         print(self.fig.gca())
@@ -287,9 +291,10 @@ class ECGModel(QMainWindow):
         data = helper.filter_timeframe(samples, tframe)
 
         self.removeSample()
-        self.ax2.plot(data[0:, 0], data[0:, 1], 'r--', label='sample')
+        self.ax1.plot(data[0:, 0], data[0:, 1], 'r--', label='sample')
+        self.recalc_axis()
         self.recalc_legend()
-        self.ax2.figure.canvas.draw()
+        self.ax1.figure.canvas.draw()
 
     def exportParams(self, filename='ecgdata.json'):
         caption = 'Export Parameters'
@@ -303,37 +308,39 @@ class ECGModel(QMainWindow):
 
     def recalc_legend(self):
         ax1_hndl, ax1_lbl = self.ax1.get_legend_handles_labels()
-        ax2_hndl, ax2_lbl = self.ax2.get_legend_handles_labels()
-        handles = ax1_hndl + ax2_hndl
-        labels = ax1_lbl + ax2_lbl
-        if not handles and self.ax1.get_legend():
+        if self.ax1.get_legend():
             self.ax1.get_legend().remove()
-            return
-        self.ax1.legend(handles=handles, labels=labels)
+            if not ax1_lbl:
+                return
+
+        self.ax1.legend(handles=ax1_hndl, labels=ax1_lbl)
 
     def recalc_axis(self):
         self.ax1.relim()
         self.ax1.autoscale_view()
-        self.ax2.relim()
-        self.ax2.autoscale_view()
 
     def removeEst(self):
         for l in self.ax1.get_lines():
-            l.remove()
+            if l.get_label() == 'estimate':
+                l.remove()
         self.recalc_axis()
         self.recalc_legend()
         self.ax1.figure.canvas.draw()
 
     def removeSample(self):
-        for l in self.ax2.get_lines():
+        for l in self.ax1.get_lines():
+            if l.get_label() == 'sample':
+                l.remove()
+        self.recalc_axis()
+        self.recalc_legend()
+        self.ax1.figure.canvas.draw()
+
+    def removeAll(self):
+        for l in self.ax1.get_lines():
             l.remove()
         self.recalc_axis()
         self.recalc_legend()
-        self.ax2.figure.canvas.draw()
-
-    def removeAll(self):
-        self.removeSample()
-        self.removeEst()
+        self.ax1.figure.canvas.draw()
 
     def parseParams(self, a, b, evt, omega):
         arr_a = nparr([float(i) for i in a])
@@ -355,5 +362,6 @@ class ECGModel(QMainWindow):
         self.removeEst()
         sol = helper.solve_ecg(a, b, evt, omega)
         self.ax1.plot(sol.t, sol.y[2], 'b-', label='estimate')
+        self.recalc_axis()
         self.recalc_legend()
         self.ax1.figure.canvas.draw()
