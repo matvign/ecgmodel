@@ -3,7 +3,7 @@ import sys
 import PyQt5.QtCore as QtCore
 from PyQt5.QtWidgets import QApplication
 
-from gui import ecgapp
+from ecgmodel import ecgapp
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

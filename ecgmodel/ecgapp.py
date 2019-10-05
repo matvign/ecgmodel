@@ -14,8 +14,8 @@ from PyQt5.QtWidgets import (QAction, QDesktopWidget, QFileDialog, QFormLayout,
                              QMainWindow, QMenu, QMessageBox, QPushButton,
                              QVBoxLayout, QWidget, qApp)
 
-from gui import slider
-from helpers import helper
+from ecgmodel import slider
+from ecgmodel.helpers import helper
 
 
 class ECGModel(QMainWindow):
