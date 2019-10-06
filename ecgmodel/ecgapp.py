@@ -272,7 +272,9 @@ class ECGModel(QMainWindow):
         fileName = QFileDialog.getOpenFileName(self, caption, path, f_filter)
         if not fileName[0]:
             return
-        samples, tmax = helper.import_csv(fileName[0])
+        samples = helper.import_csv(fileName[0])
+        tmax = samples[:, 0][-1]
+
         if samples is None:
             helper.show_import_err(fileName[0])
         tframe, res = self.show_slider_timeframe(tmax=tmax)
@@ -330,30 +332,25 @@ class ECGModel(QMainWindow):
         self.redraw_axes()
 
     def buildEKF(self):
-        """
-        Y (observations) = amplitudes taken from samples
-        X_k (initial state) = [-1, 0, 0]
-        P_k (covariance matrix) = [...]
-
-        Q_k (measurement noise) = [...]
-        R_k (process noise) = [1]
-
-        a, b, evt (constants)
-        omega (angular velocity) = approximation based on length of sample
-        """
+        """Obtain values to perform Kalman Filtering with ODE """
         sample = next((l for l in self.ax.get_lines() if l.get_label() == 'sample'), None)
         if not sample:
             print('no sample found!')
             return
-        Y = sample.get_ydata()
-        X = [-1, 0, 0]
-        P = 10
-        Q = 0
-        R = 10
+
+        ys = sample.get_ydata()
+        ts = sample.get_xdata()
+
+        x0 = [-1, 0, 0]  # default initial state, [-1, 0, 0]
+        p0 = 10  # default initial covariance, np.eye(3) * p
+        q = 0   # default process noise 0
+        r = 10  # default measurement noise, np.eye(3) * r
+
         a = [float(i) for i in ECGModel.defaults['a']]
         b = [float(i) for i in ECGModel.defaults['b']]
         evt = [ne.evaluate(helper.pirepl(i), {'pi': helper.pi}) for i in ECGModel.defaults['evt']]
         w = sample.get_xdata()[-1] * 2 * helper.pi
 
-        res = helper.solve_ekf(Y, X, P, Q, R, a, b, evt, w)
-        print(res)
+        res = helper.solve_ecg_ekf(ys, ts, x0, p0, q, r, a, b, evt, w)
+        self.ax.plot(res.t, res.y[2], 'b-', label='ekf')
+        self.redraw_axes()

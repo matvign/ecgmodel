@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import json
 import re
+from math import ceil, floor
 
 import numpy as np
 from scipy.integrate import solve_ivp
+
 
 pi = np.pi
 pi_regx = re.compile(r"(pi\s*|[0-9.]+)(?=(\s*pi|[0-9.]))")
@@ -45,26 +47,11 @@ def import_csv(file):
         return None
     if csvdata.shape[0] == 0 or csvdata.shape[1] != 2:
         return None
-    return (csvdata, np.amax(csvdata[:, 0]))
-    # return csvdata[csvdata[:, 0] < timeframe]
+    return csvdata
 
 
 def filter_timeframe(data, timeframe):
     return data[data[:, 0] < timeframe]
-
-
-def solve_ecg(a, b, evt, w=2*np.pi):
-    arr_a = np.asarray(a, dtype="float")
-    arr_b = np.asarray(b, dtype="float")
-    arr_evt = np.asarray(evt, dtype="float")
-
-    tspan = (0, 1)
-    y0 = [-1, 0, 0]
-    teval = np.linspace(0, 1, num=100)
-    print('building...')
-    sol = solve_ivp(fun=lambda t, y: ecg_model(y, a, b, evt, w),
-                    t_span=tspan, y0=y0, t_eval=teval)
-    return sol
 
 
 def ecg_model(X, a, b, evt, w=2*np.pi, z0=0):
@@ -83,54 +70,57 @@ def ecg_model(X, a, b, evt, w=2*np.pi, z0=0):
     dX[2] = -(z - z0)
     for i in range(0, 5):
         dtheta = theta - evt[i]
-        dX[2] -= a[i] * dtheta * np.exp(-(dtheta**2) / (2 * b[i]**2))
+        dX[2] = dX[2] - a[i] * dtheta * np.exp(-(dtheta**2) / (2 * b[i]**2))
 
     return dX
 
 
-def solve_ekf(Y, X, P, Q, R, a, b, evt, w):
-    ''' Run Kalman Filter until we're out of observations
-    Y: measurement/observations
-    X: state matrix         P: covariance matrix
-    Q: measurement noise    R: process noise
+def solve_ecg(a, b, evt, w=2*np.pi):
+    arr_a = np.asarray(a, dtype="float")
+    arr_b = np.asarray(b, dtype="float")
+    arr_evt = np.asarray(evt, dtype="float")
 
-    a: constant             b: constant
-    evt: constant           w: angular velocity
+    tspan = (0, 1)
+    y0 = [-1, 0, 0]
+    teval = np.linspace(0, 1, num=100)
+    print('building...')
+    fun = lambda t, y: ecg_model(y, a, b, evt, w)
+    sol = solve_ivp(fun=fun, t_span=tspan, y0=y0, t_eval=teval)
+    return sol
 
-    Predict: run predict with the updated state
-    Update: create a new update with the estimate
-    '''
-    Y = np.asarray(Y, dtype="float")
-    X, P = np.asmatrix(X, dtype="float").T, np.asmatrix(np.eye(3)*P, dtype="float")
-    Q, R = np.asmatrix(Q, dtype="float"), np.asmatrix(np.eye(3)*R, dtype="float")
+
+def solve_ecg_ekf(ys, ts, x0, p0, q, r, a, b, evt, w):
+    """Run Kalman Filter """
+    t_span = (floor(ts[0]), ceil(ts[-1]))
+
+    x0, p0 = np.asarray(x0, dtype="float"), np.asmatrix(np.eye(3)*p0, dtype="float")
+    q, r = np.asmatrix(q, dtype="float"), np.asmatrix(np.eye(3)*r, dtype="float")
 
     a, b = np.asarray(a, dtype="float"), np.asarray(b, dtype="float")
     evt = np.asarray(evt, dtype="float")
 
-    prior_X, prior_P = None, None
-    post_X, post_P = X, P
-    res = [(post_X, post_P)]
+    fun = lambda t, y: ecg_model(y, a, b, evt, w)
+    pr = lambda x, p, q: ecg_predict(x, p, q, a, b, evt, w)
+    up = lambda y, x, p, r: ecg_update(y, x, p, r)
 
-    for obs in Y:
-        prior_X, prior_P = predict(post_X, post_P, Q, a, b, evt, w)
-        post_X, post_P = update(prior_X, prior_P, R, obs)
-        res.append(post_X)
-
+    # res = solve_ivp_ekf(fun, pr, up, ys, ts, t_span, x0, p0, q, r)
+    res = None
     return res
 
 
 def ecg_jacobian(X, a, b, evt, w):
     ''' Linearized version of ecg_model wrt x, y, z '''
-    x, y, z = np.array(X)[0]
+    x, y, z = X
     sqrt_xy = np.sqrt(x**2 + y**2)
+    sq_xy = np.power(x, 2) + np.power(y, 2)
     theta = np.arctan2(y, x)
 
     dF_x = 1 + (-2*x**2 - y**2)/sqrt_xy
-    dF_y = -w + (-x*y)/sqrt_xy
+    dF_y = -w + ((-x*y)/sqrt_xy)
     dF_z = 0
 
-    dG_x = w + (-x*y)/sqrt_xy
-    dG_y = 1 + (-2*y**2 - x**2)/sqrt_xy
+    dG_x = w + ((-x*y)/sqrt_xy)
+    dG_y = 1 + ((-2*y**2 - x**2)/sqrt_xy)
     dG_z = 0
 
     dH_x = 0
@@ -138,16 +128,43 @@ def ecg_jacobian(X, a, b, evt, w):
     dH_z = -1
 
     for i in range(0, 5):
-        dtheta = theta - evt[i]
-        component = np.exp(-dtheta**2/2*b**2) * (1 - dtheta**2/b**2)
-        dH_x += component * (a[i]*y)/(x**2 + y**2)
-        dH_y += component * (-a[i]*x)/(x**2 + y**2)
+        dtheta_sq = np.power(theta - evt[i], 2)
+        component = np.exp(-dtheta_sq/(2*np.power(b[i], 2))) * (1 - (dtheta_sq/np.power(b[i], 2)))
+        dH_x = dH_x + ((a[i]*y)/sq_xy) * component
+        dH_y = dH_y + (-(a[i]*x)/sq_xy) * component
 
     return np.matrix([
         [dF_x, dF_y, dF_z],
         [dG_x, dG_y, dG_z],
         [dH_x, dH_y, dH_z]
     ])
+
+
+def ecg_predict(x, p, q, a, b, evt, w):
+    """Function for ECG predict step of covariance matrix
+    This function uses a fixed a, b, evt and w
+    lambda x, p, q: ecg_predict(x, p, q, a, b, evt, w)
+    """
+    jac_f = ecg_jacobian(x, a, b, evt, w)
+    jac_fw = np.matrix([0, 0, 0], dtype="float").T
+    prior_p = jac_f*p*jac_f.T + jac_fw*q*jac_fw.T
+
+    return prior_p
+
+
+def ecg_update(y, prior_x, prior_p, r):
+    prior_x = np.asmatrix(prior_x, dtype="float").T
+
+    g = np.matrix([0, 0, 1], dtype="float") * prior_x  # + r
+    jac_g = np.matrix([0, 0, 1], dtype="float")
+    jac_gv = np.matrix([1], dtype="float")
+
+    s = jac_g*prior_p*jac_g.T + jac_gv
+    k = prior_p*jac_g.T * s.I
+
+    post_x = prior_x + k*(y-g)
+    post_p = prior_p - k*jac_g*prior_p
+    return (np.array(post_x.T)[0], post_p)
 
 
 def predict(X, P, Q, a, b, evt, w):
