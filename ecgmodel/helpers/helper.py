@@ -58,8 +58,8 @@ def solve_ecg(a, b, evt, w=2*np.pi):
     arr_b = np.asarray(b, dtype="float")
     arr_evt = np.asarray(evt, dtype="float")
 
-    tspan = np.array([0, 1], dtype="float")
-    y0 = np.array([-1.0, 0.0, 0.0], dtype="float")
+    tspan = (0, 1)
+    y0 = [-1, 0, 0]
     teval = np.linspace(0, 1, num=100)
     print('building...')
     sol = solve_ivp(fun=lambda t, y: ecg_model(y, a, b, evt, w),
@@ -68,11 +68,10 @@ def solve_ecg(a, b, evt, w=2*np.pi):
 
 
 def ecg_model(X, a, b, evt, w=2*np.pi, z0=0):
-    '''
-    Function to solve ODE with scipy.integrate.solve_ivp()
+    """ Function to solve ODE with scipy.integrate.solve_ivp()
     Details located here (p291):
     http://web.mit.edu/~gari/www/papers/ieeetbe50p289.pdf
-    '''
+    """
     x, y, z = X
     dX = np.zeros(3)
 
@@ -90,7 +89,7 @@ def ecg_model(X, a, b, evt, w=2*np.pi, z0=0):
 
 
 def solve_ekf(Y, X, P, Q, R, a, b, evt, w):
-    '''
+    ''' Run Kalman Filter until we're out of observations
     Y: measurement/observations
     X: state matrix         P: covariance matrix
     Q: measurement noise    R: process noise
@@ -98,7 +97,6 @@ def solve_ekf(Y, X, P, Q, R, a, b, evt, w):
     a: constant             b: constant
     evt: constant           w: angular velocity
 
-    Run Kalman Filter until we're out of observations.
     Predict: run predict with the updated state
     Update: create a new update with the estimate
     '''
@@ -122,9 +120,7 @@ def solve_ekf(Y, X, P, Q, R, a, b, evt, w):
 
 
 def ecg_jacobian(X, a, b, evt, w):
-    '''
-    Linearized version of ecg_model wrt x, y, z
-    '''
+    ''' Linearized version of ecg_model wrt x, y, z '''
     x, y, z = np.array(X)[0]
     sqrt_xy = np.sqrt(x**2 + y**2)
     theta = np.arctan2(y, x)

@@ -1,4 +1,4 @@
-#!/usr/bin/env
+#!/usr/bin/env python3
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (QDialog, QDialogButtonBox, QGroupBox, QLabel,
                              QSlider, QVBoxLayout)

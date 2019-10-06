@@ -20,10 +20,10 @@ from ecgmodel.helpers import helper
 
 class ECGModel(QMainWindow):
     defaults = {
-        'a': ["1.2", "-5.0", "30.0", "-7.5", "0.75"],
-        'b': ["0.25", "0.1", "0.1", "0.1", "0.4"],
-        'evt': ["-pi/3", "-pi/12", "0", "pi/12", "pi/2"],
-        'omega': ["2*pi"]
+        "a": ["1.2", "-5.0", "30.0", "-7.5", "0.75"],
+        "b": ["0.25", "0.1", "0.1", "0.1", "0.4"],
+        "evt": ["-pi/3", "-pi/12", "0", "pi/12", "pi/2"],
+        "omega": ["2*pi"]
     }
 
     def __init__(self, parent=None):
