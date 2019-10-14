@@ -1,5 +1,6 @@
 scipy
 numpy
+sympy
 matplotlib
 numexpr
 pyqt5
