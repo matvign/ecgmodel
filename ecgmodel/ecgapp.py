@@ -343,5 +343,11 @@ class ECGModel(QMainWindow):
         omega = sample.get_xdata()[-1] * 2 * helper.pi
 
         res = helper.solve_ecg_ekf(ys, ts, a, b, evt, omega)
+<<<<<<< HEAD
         self.ax.plot(res[0], res[1], 'b-', label='ekf')
         self.redraw_axes()
+=======
+        print(res)
+        # self.ax.plot(res.t, res.y[2], 'b-', label='ekf')
+        # self.redraw_axes()
+>>>>>>> alter ecgmodel with greater altitude, add relevant papers to docs
