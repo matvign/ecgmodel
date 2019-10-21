@@ -79,25 +79,26 @@ def ecg_model(X, a, b, evt, omega=2*np.pi, z0=0):
     return dX
 
 
-def ecg_euler_model(X, h, a, b, evt, omega=2*np.pi, z0=0):
-    """Discrete form for euler method """
+def ecg_discrete_model(X, h, a, b, evt, omega=2*np.pi, z0=0, w=[0, 0, 0]):
+    """Discrete form for euler method. Optional process noise in w """
     x, y, z = X
+    w1, w2, w3 = w
     Xk = np.zeros(3)
     theta = np.arctan2(y, x)
     dtheta = [(theta - ei) for ei in evt]
 
     alpha = 1.0 - np.sqrt(np.power(x, 2) + np.power(y, 2))
 
-    Xk[0] = (1 + alpha * h)*x - omega * h * y
-    Xk[1] = (1 + alpha * h)*y + omega * h * x
-    Xk[2] = -((h-1)*z - h*z0) - sum(
+    Xk[0] = (1 + alpha * h)*x - (omega * h * y) + w1
+    Xk[1] = (1 + alpha * h)*y + (omega * h * x) + w2
+    Xk[2] = -((h-1)*z - h*z0) + w3 - sum(
         ((ai * omega * h * dthi) * np.exp(-(dthi**2)/(2*bi**2)))
         for ai, bi, dthi in zip(a, b, dtheta)
     )
     return Xk
 
 
-def ecg_euler_jacobian():
+def ecg_discrete_jacobian():
     x, y, z = sp.symbols("x, y, z")
     z0 = sp.symbols("z0")
     h = sp.symbols("h")
@@ -105,6 +106,7 @@ def ecg_euler_jacobian():
     b1, b2, b3, b4, b5 = sp.symbols("b1, b2, b3, b4, b5")
     e1, e2, e3, e4, e5 = sp.symbols("e1, e2, e3, e4, e5")
     omega = sp.symbols("omega")
+    w1, w2, w3 = sp.symbols("w1, w2, w3")
 
     a = [a1, a2, a3, a4, a5]
     b = [b1, b2, b3, b4, b5]
@@ -112,9 +114,9 @@ def ecg_euler_jacobian():
     d = [(sp.atan2(y, x) - ei) for ei in evt]
 
     alpha = 1 - sp.sqrt(x**2 + y**2)
-    F = (1 + alpha*h)*x - (omega * h * y)
-    G = (1 + alpha*h)*y + (omega * h * x)
-    H = -((h-1)*z - h*z0) - sum(
+    F = (1 + alpha*h)*x - (omega * h * y) + (w1 * h)
+    G = (1 + alpha*h)*y + (omega * h * x) + (w2 * h)
+    H = -((h-1)*z - h*z0) + (w3 * h) - sum(
         ((ai * omega * h * dthi) * sp.exp(-(dthi**2)/(2*bi**2)))
         for ai, bi, dthi in zip(a, b, d)
     )
@@ -126,38 +128,7 @@ def ecg_euler_jacobian():
     m = sp.Matrix([F, G, H])
     j = m.jacobian(state)
     return sp.lambdify([x, y, z, h, a1, a2, a3, a4, a5, b1, b2, b3, b4, b5,
-                e1, e2, e3, e4, e5, omega], j)
-
-
-def get_jacobian_f():
-    x, y, z = sp.symbols("x, y, z")
-    z0 = sp.symbols("z0")
-    a1, a2, a3, a4, a5 = sp.symbols("a1, a2, a3, a4, a5")
-    b1, b2, b3, b4, b5 = sp.symbols("b1, b2, b3, b4, b5")
-    e1, e2, e3, e4, e5 = sp.symbols("e1, e2, e3, e4, e5")
-    omega = sp.symbols("omega")
-
-    a_s = [a1, a2, a3, a4, a5]
-    b_s = [b1, b2, b3, b4, b5]
-    e_s = [e1, e2, e3, e4, e5]
-    dth_s = [(sp.atan2(y, x) - ei) for ei in e_s]
-
-    alpha = 1 - sp.sqrt(x**2 + y**2)
-    F = (alpha * x) - (omega * y)
-    G = (alpha * y) + (omega * x)
-    H = -(z - z0) - sum(
-        (ai * dthi * sp.exp(-(dthi**2)/(2*bi**2)))
-        for ai, bi, dthi in zip(a_s, b_s, dth_s)
-    )
-
-    state = sp.Matrix([x, y, z])
-    # , a1, a2, a3, a4, a5, b1, b2, b3, b4, b5,
-    #                    e1, e2, e3, e4, e5])
-
-    m = sp.Matrix([F, G, H])
-    j = m.jacobian(state)
-    return sp.lambdify([x, y, z, a1, a2, a3, a4, a5, b1, b2, b3, b4, b5,
-                e1, e2, e3, e4, e5, omega], j)
+                e1, e2, e3, e4, e5, omega, w1, w2, w3], j)
 
 
 def solve_ecg(a, b, evt, omega):
@@ -204,9 +175,8 @@ def solve_ecg_ekf(ys, ts, a, b, evt, omega):
     """
     xk = np.asarray([-1, 0, 0], dtype="float")
     pk = np.asmatrix(np.eye(3), dtype="float")
-    Q = np.asmatrix([0], dtype="float")
-    R = float(1)
-    jacobian_f = ecg_euler_jacobian()
+    Q = np.asmatrix(np.eye(3), dtype="float")
+    jacobian_f = ecg_discrete_jacobian()
 
     a = np.asarray(a, dtype="float")
     b = np.asarray(b, dtype="float")
@@ -218,15 +188,14 @@ def solve_ecg_ekf(ys, ts, a, b, evt, omega):
     for tk, yk in zip(ts, ys):
         dt = tk - t_old
 
-        # perform state prediction, returns [x y z]
-        x_hat = ecg_euler_model(xk, dt, a, b, evt, omega)
-        # x_hat = euler_method(ecg_euler_model, xk, dt, (a, b, evt, omega))
+        # perform state prediction
+        x_hat = ecg_discrete_model(xk, dt, a, b, evt, omega)
 
         # perform covariance prediction
         p_hat = ecg_predict(jacobian_f, dt, xk, pk, Q, a, b, evt, omega)
 
         # perform state update
-        xk, pk = ecg_update(yk, dt, x_hat, p_hat, R)
+        xk, pk = ecg_update(yk, dt, x_hat, p_hat)
         xs.append(xk)
 
         # update last time
@@ -235,25 +204,23 @@ def solve_ecg_ekf(ys, ts, a, b, evt, omega):
     return (ts, [i[2] for i in xs[:]])
 
 
-def euler_method(model, xk, dt, inputs=None):
-    xk_1 = xk + (dt*model(xk, *inputs))
-    return xk_1
-
-
 def ecg_predict(jacobian, tk, X, P, Q, a, b, evt, omega):
     """Function for ECG predict step of covariance matrix
     This function uses a fixed a, b, evt and w
     """
-    A = jacobian(*X, tk, *a, *b, *evt, omega)
-    F = np.asmatrix(np.zeros(3), dtype="float").T
+    # mu, sigma = 0, 0.1
+    # w = np.random.normal(mu, sigma, 3)
+    A = jacobian(*X, tk, *a, *b, *evt, omega, *[0, 0, 0])
+    F = np.asmatrix(np.eye(3), dtype="float")
     priori_p = A*P*A.T + F*Q*F.T
     return priori_p
 
 
-def ecg_update(yk, h, X, P, R):
+def ecg_update(yk, h, X, P):
     X = np.asmatrix(X, dtype="float").T
+    r = np.random.normal(0, 0.005, 1)
 
-    g = np.matrix([0, 0, 1], dtype="float") * X + R
+    g = np.matrix([0, 0, 1], dtype="float") * X + r
 
     C = np.matrix([0, 0, 1-h], dtype="float")
     G = np.matrix([1], dtype="float")
