@@ -344,5 +344,6 @@ class ECGModel(QMainWindow):
         omega = sample.get_xdata()[-1] * 2 * helper.pi
 
         res = helper.solve_ecg_ekf(ys, ts, a, b, evt, omega)
+        print(res)
         # self.ax.plot(res.t, res.y[2], 'b-', label='ekf')
         # self.redraw_axes()

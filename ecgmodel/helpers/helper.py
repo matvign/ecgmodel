@@ -66,13 +66,13 @@ def ecg_model(X, a, b, evt, omega=2*np.pi, z0=0):
     x, y, z = X
     dX = np.zeros(3)
     theta = np.arctan2(y, x)
-    dtheta = [theta - ei for ei in evt]
+    dtheta = [(theta - ei) for ei in evt]
 
     alpha = 1.0 - np.sqrt(np.power(x, 2) + np.power(y, 2))
     dX[0] = (alpha*x) - (omega*y)
     dX[1] = (alpha*y) + (omega*x)
     dX[2] = -(z - z0) - sum(
-        (ai * dthi * np.exp(-(dthi**2)/(2*bi**2)))
+        (ai * omega * dthi * np.exp(-(dthi**2)/(2*bi**2)))
         for ai, bi, dthi in zip(a, b, dtheta)
     )
 
@@ -96,7 +96,7 @@ def get_jacobian_f():
     F = (alpha * x) - (omega * y)
     G = (alpha * y) + (omega * x)
     H = -(z - z0) - sum(
-        (ai * dthi * sp.exp(-(dthi**2)/(2*bi**2)))
+        (ai * omega * dthi * sp.exp(-(dthi**2)/(2*bi**2)))
         for ai, bi, dthi in zip(a_s, b_s, dth_s)
     )
 
@@ -108,38 +108,6 @@ def get_jacobian_f():
     j = m.jacobian(state)
     return sp.lambdify([x, y, z, a1, a2, a3, a4, a5, b1, b2, b3, b4, b5,
                 e1, e2, e3, e4, e5, omega], j)
-
-
-def ecg_jacobian_reduced(X, a, b, evt, omega):
-    """ Linearized version of ecg_model wrt x, y, z """
-    x, y, z = X
-    sqrt_xy = np.sqrt(x**2 + y**2)
-    sq_xy = np.power(x, 2) + np.power(y, 2)
-    theta = np.arctan2(y, x)
-
-    dF_x = 1 + (-2*x**2 - y**2)/sqrt_xy
-    dF_y = -omega + ((-x*y)/sqrt_xy)
-    dF_z = 0
-
-    dG_x = omega + ((-x*y)/sqrt_xy)
-    dG_y = 1 + ((-2*y**2 - x**2)/sqrt_xy)
-    dG_z = 0
-
-    dH_x = 0
-    dH_y = 0
-    dH_z = -1
-
-    for i in range(0, 5):
-        dtheta_sq = np.power(theta - evt[i], 2)
-        component = np.exp(-dtheta_sq/(2*np.power(b[i], 2))) * (1 - (dtheta_sq/np.power(b[i], 2)))
-        dH_x = dH_x + ((a[i]*y)/sq_xy) * component
-        dH_y = dH_y + (-(a[i]*x)/sq_xy) * component
-
-    return np.matrix([
-        [dF_x, dF_y, dF_z],
-        [dG_x, dG_y, dG_z],
-        [dH_x, dH_y, dH_z]
-    ])
 
 
 def solve_ecg(a, b, evt, omega):
