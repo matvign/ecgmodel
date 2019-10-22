@@ -13,7 +13,6 @@ class SliderDialog(QDialog):
         self.setWindowTitle('Select timeframe')
         self.setMinimumSize(550, 200)
 
-        layout = QVBoxLayout(self)
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setMinimum(tmin)
         self.slider.setMaximum(tmax)
@@ -36,9 +35,10 @@ class SliderDialog(QDialog):
         sliderlayout.addWidget(self.label)
         sliderlayout.addWidget(self.slider)
         sliderlayout.addWidget(buttons)
-
         groupbox = QGroupBox('Select timeframe of sample:')
         groupbox.setLayout(sliderlayout)
+
+        layout = QVBoxLayout(self)
         layout.addWidget(groupbox)
 
     def reset(self):

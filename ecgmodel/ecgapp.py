@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (QAction, QDesktopWidget, QFileDialog, QFormLayout,
                              QMainWindow, QMenu, QMessageBox, QPushButton,
                              QVBoxLayout, QWidget, qApp)
 
-from ecgmodel import slider
+from ecgmodel import slider, ekf_form
 from ecgmodel.helpers import helper
 
 
@@ -78,6 +78,11 @@ class ECGModel(QMainWindow):
         exportAction.setStatusTip("Export current parameters")
         exportAction.triggered.connect(lambda: self.export_params())
         filemenu.addAction(exportAction)
+
+        ekfForm = QAction("EKF Form", self)
+        ekfForm.setStatusTip("Generate estimate from ECG sample")
+        ekfForm.triggered.connect(self.show_ekf_form)
+        filemenu.addAction(ekfForm)
 
         ekfAction = QAction("EKF", self)
         ekfAction.setStatusTip("Generate estimate from ECG sample")
@@ -233,6 +238,10 @@ class ECGModel(QMainWindow):
 
     def show_slider_timeframe(self, tmax=1):
         return slider.SliderDialog.getTimeFrame(self, tmax=tmax)
+
+    def show_ekf_form(self):
+        opts = ekf_form.KalmanFilterForm.get_ekf_options(self)
+        print(opts)
 
     def show_build_err(self):
         msg = QMessageBox()
