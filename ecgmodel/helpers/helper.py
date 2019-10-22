@@ -221,6 +221,45 @@ def solve_ecg_ekf(ys, ts, a, b, evt, omega):
     return (ts, [i[2] for i in xs[:]])
 
 
+def solve_ecg_ekf_gen(ys, ts, a, b, evt, omega):
+    """Run step by step Kalman Filter based on a generator function """
+    try:
+        omega = findpeak(ts, ys)
+    except:
+        omega = 2 * np.pi
+
+    xk = np.asarray([-1, 0, 0, *a, *b, *evt], dtype="float")
+    pk = np.asmatrix(np.eye(18), dtype="float")
+    Q = np.asmatrix(np.eye(18), dtype="float")
+    jacobian_f = ecg_discrete_jacobian()
+
+    t_old = ts[0]
+    xs = []
+
+    for tk, yk in zip(ts, ys):
+        dt = tk - t_old
+
+        # perform state prediction
+        ak = xk[3:8]
+        bk = xk[8:13]
+        ek = xk[13:18]
+        x_hat = ecg_discrete_model(xk[0:3], dt, ak, bk, ek, omega)
+        x_hat = [*x_hat, *ak, *bk, *ek]
+
+        # perform covariance prediction
+        p_hat = ecg_predict(jacobian_f, dt, xk, pk, Q, ak, bk, ek, omega)
+
+        # perform state update
+        xk, pk = ecg_update(yk, dt, x_hat, p_hat)
+        xs.append(xk)
+
+        # update last time
+        t_old = tk
+        yield xk
+
+    return (ts, [i[2] for i in xs[:]])
+
+
 def ecg_predict(jacobian, tk, X, P, Q, a, b, evt, omega):
     """Function for ECG predict step of covariance matrix
     This function uses a fixed a, b, evt and w

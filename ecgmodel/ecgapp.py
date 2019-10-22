@@ -105,6 +105,11 @@ class ECGModel(QMainWindow):
         clearEstimate.triggered.connect(lambda: self.removePlot())
         filemenu.addAction(clearEstimate)
 
+        clearEKF = QAction("Clear EKF", self)
+        clearEKF.setStatusTip("Remove EKF plot")
+        clearEKF.triggered.connect(lambda: self.removePlot("ekf"))
+        filemenu.addAction(clearEKF)
+
         clearAll = QAction("Clear All", self)
         clearAll.setStatusTip("Clear all graphs")
         clearAll.triggered.connect(self.removeAll)
@@ -295,7 +300,7 @@ class ECGModel(QMainWindow):
 
         data = helper.filter_timeframe(samples, tframe)
         self.removePlot("sample")
-        self.ax.plot(data[0:, 0], data[0:, 1], "r--", label="sample")
+        self.ax.plot(data[0:, 0], data[0:, 1], "b-", label="sample")
         self.redraw_axes()
 
     def removePlot(self, ln="estimate"):
@@ -338,7 +343,7 @@ class ECGModel(QMainWindow):
     def buildECG(self, a, b, evt, omega):
         self.removePlot()
         sol = helper.solve_ecg(a, b, evt, omega)
-        self.ax.plot(sol.t, sol.y[2], "b-", label="estimate")
+        self.ax.plot(sol.t, sol.y[2], "k--", label="estimate")
         self.redraw_axes()
 
     def buildEKF(self):
@@ -357,5 +362,6 @@ class ECGModel(QMainWindow):
         omega = 2 * helper.pi
 
         res = helper.solve_ecg_ekf(ys, ts, a, b, evt, omega)
-        self.ax.plot(res[0], res[1], 'b-', label='ekf')
+        self.removePlot("ekf")
+        self.ax.plot(res[0], res[1], 'r-', label='ekf')
         self.redraw_axes()
