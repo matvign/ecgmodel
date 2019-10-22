@@ -84,10 +84,10 @@ class ECGModel(QMainWindow):
         ekfAction.triggered.connect(self.buildEKF)
         filemenu.addAction(ekfAction)
 
-        peakAction = QAction("Peak", self)
-        peakAction.setStatusTip("Find Peaks")
-        peakAction.triggered.connect(self.peakfind)
-        filemenu.addAction(peakAction)
+        # peakAction = QAction("Peak", self)
+        # peakAction.setStatusTip("Find Peaks")
+        # peakAction.triggered.connect(self.peakfind)
+        # filemenu.addAction(peakAction)
 
         resetAction = QAction("Reset", self)
         resetAction.setShortcut("Ctrl+R")
@@ -354,7 +354,7 @@ class ECGModel(QMainWindow):
         a = [float(i) for i in ECGModel.defaults["a"]]
         b = [float(i) for i in ECGModel.defaults["b"]]
         evt = [helper.convert_pi(i) for i in ECGModel.defaults["evt"]]
-        omega = sample.get_xdata()[-1] * 2 * helper.pi
+        omega = 2 * helper.pi
 
         res = helper.solve_ecg_ekf(ys, ts, a, b, evt, omega)
         self.ax.plot(res[0], res[1], 'b-', label='ekf')

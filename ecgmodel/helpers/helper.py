@@ -56,7 +56,6 @@ def import_csv(file):
 
 
 def findpeak(ts, ys):
-    vals = np.array(ys)
     peaks = find_peaks(ys, height=0, distance=70)
     peak_times = [ts[i] for i in peaks[0]]
     if len(peak_times) == 1:
@@ -64,7 +63,8 @@ def findpeak(ts, ys):
     else:
         peak_period = np.mean(np.diff(peak_times))
     print(peaks)
-    print(peak_period)
+    print(peak_times, peak_period)
+    return peak_period
 
 
 def filter_timeframe(data, timeframe):
@@ -188,6 +188,7 @@ def solve_ecg_ekf(ys, ts, a, b, evt, omega):
     a = np.asarray(a, dtype="float")
     b = np.asarray(b, dtype="float")
     evt = np.asarray(evt, dtype="float")
+    omega = findpeak(ts, ys)
 
     xk = np.asarray([-1, 0, 0, *a, *b, *evt], dtype="float")
     pk = np.asmatrix(np.eye(18), dtype="float")
@@ -203,7 +204,6 @@ def solve_ecg_ekf(ys, ts, a, b, evt, omega):
         # perform state prediction
         x_hat = ecg_discrete_model(xk[0:3], dt, a, b, evt, omega)
         x_hat = [*x_hat, *a, *b, *evt]
-        print(x_hat)
 
         # perform covariance prediction
         p_hat = ecg_predict(jacobian_f, dt, xk, pk, Q, a, b, evt, omega)
