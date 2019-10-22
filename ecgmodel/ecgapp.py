@@ -280,7 +280,6 @@ class ECGModel(QMainWindow):
             return
 
         data = helper.filter_timeframe(samples, tframe)
-
         self.removePlot("sample")
         self.ax.plot(data[0:, 0], data[0:, 1], "r--", label="sample")
         self.redraw_axes()
@@ -344,6 +343,5 @@ class ECGModel(QMainWindow):
         omega = sample.get_xdata()[-1] * 2 * helper.pi
 
         res = helper.solve_ecg_ekf(ys, ts, a, b, evt, omega)
-        print(res)
-        # self.ax.plot(res.t, res.y[2], 'b-', label='ekf')
-        # self.redraw_axes()
+        self.ax.plot(res[0], res[1], 'b-', label='ekf')
+        self.redraw_axes()
