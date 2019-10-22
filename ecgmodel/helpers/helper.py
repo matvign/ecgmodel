@@ -121,14 +121,13 @@ def ecg_discrete_jacobian():
         for ai, bi, dthi in zip(a, b, d)
     )
 
-    state = sp.Matrix([x, y, z])
-    # , a1, a2, a3, a4, a5, b1, b2, b3, b4, b5,
-    #                    e1, e2, e3, e4, e5])
+    state = sp.Matrix([x, y, z, a1, a2, a3, a4, a5, b1, b2, b3, b4, b5,
+                       e1, e2, e3, e4, e5])
 
-    m = sp.Matrix([F, G, H])
+    m = sp.Matrix([F, G, H, *[0 for i in range(0, 15)]])
     j = m.jacobian(state)
-    return sp.lambdify([x, y, z, h, a1, a2, a3, a4, a5, b1, b2, b3, b4, b5,
-                e1, e2, e3, e4, e5, omega, w1, w2, w3], j)
+    return sp.lambdify([x, y, z, a1, a2, a3, a4, a5, b1, b2, b3, b4, b5,
+                e1, e2, e3, e4, e5, omega, w1, w2, w3, h], j)
 
 
 def solve_ecg(a, b, evt, omega):
@@ -173,14 +172,14 @@ def solve_ecg_ekf(ys, ts, a, b, evt, omega):
     omega: angular velocity, fixed in our case
 
     """
-    xk = np.asarray([-1, 0, 0], dtype="float")
-    pk = np.asmatrix(np.eye(3), dtype="float")
-    Q = np.asmatrix(np.eye(3), dtype="float")
-    jacobian_f = ecg_discrete_jacobian()
-
     a = np.asarray(a, dtype="float")
     b = np.asarray(b, dtype="float")
     evt = np.asarray(evt, dtype="float")
+
+    xk = np.asarray([-1, 0, 0, *a, *b, *evt], dtype="float")
+    pk = np.asmatrix(np.eye(18), dtype="float")
+    Q = np.asmatrix(np.eye(18), dtype="float")
+    jacobian_f = ecg_discrete_jacobian()
 
     t_old = ts[0]
     xs = []
@@ -189,7 +188,9 @@ def solve_ecg_ekf(ys, ts, a, b, evt, omega):
         dt = tk - t_old
 
         # perform state prediction
-        x_hat = ecg_discrete_model(xk, dt, a, b, evt, omega)
+        x_hat = ecg_discrete_model(xk[0:3], dt, a, b, evt, omega)
+        x_hat = [*x_hat, *a, *b, *evt]
+        print(x_hat)
 
         # perform covariance prediction
         p_hat = ecg_predict(jacobian_f, dt, xk, pk, Q, a, b, evt, omega)
@@ -210,8 +211,8 @@ def ecg_predict(jacobian, tk, X, P, Q, a, b, evt, omega):
     """
     # mu, sigma = 0, 0.1
     # w = np.random.normal(mu, sigma, 3)
-    A = jacobian(*X, tk, *a, *b, *evt, omega, *[0, 0, 0])
-    F = np.asmatrix(np.eye(3), dtype="float")
+    A = jacobian(*X, omega, *[0, 0, 0], tk)
+    F = np.asmatrix(np.eye(18), dtype="float")
     priori_p = A*P*A.T + F*Q*F.T
     return priori_p
 
@@ -220,9 +221,9 @@ def ecg_update(yk, h, X, P):
     X = np.asmatrix(X, dtype="float").T
     r = np.random.normal(0, 0.005, 1)
 
-    g = np.matrix([0, 0, 1], dtype="float") * X + r
+    g = np.matrix([0, 0, 1, *[0 for i in range(0, 15)]], dtype="float") * X + r
 
-    C = np.matrix([0, 0, 1-h], dtype="float")
+    C = np.matrix([0, 0, 1-h, *[0 for i in range(0, 15)]], dtype="float")
     G = np.matrix([1], dtype="float")
 
     s = C*P*C.T + G
