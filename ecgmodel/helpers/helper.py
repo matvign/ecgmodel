@@ -185,10 +185,10 @@ def solve_ecg_ekf(ys, ts, a, b, evt, omega):
     omega: angular velocity, fixed in our case
 
     """
-    a = np.asarray(a, dtype="float")
-    b = np.asarray(b, dtype="float")
-    evt = np.asarray(evt, dtype="float")
-    omega = findpeak(ts, ys)
+    try:
+        omega = findpeak(ts, ys)
+    except:
+        omega = 2 * np.pi
 
     xk = np.asarray([-1, 0, 0, *a, *b, *evt], dtype="float")
     pk = np.asmatrix(np.eye(18), dtype="float")
@@ -202,11 +202,14 @@ def solve_ecg_ekf(ys, ts, a, b, evt, omega):
         dt = tk - t_old
 
         # perform state prediction
-        x_hat = ecg_discrete_model(xk[0:3], dt, a, b, evt, omega)
-        x_hat = [*x_hat, *a, *b, *evt]
+        ak = xk[3:8]
+        bk = xk[8:13]
+        ek = xk[13:18]
+        x_hat = ecg_discrete_model(xk[0:3], dt, ak, bk, ek, omega)
+        x_hat = [*x_hat, *ak, *bk, *ek]
 
         # perform covariance prediction
-        p_hat = ecg_predict(jacobian_f, dt, xk, pk, Q, a, b, evt, omega)
+        p_hat = ecg_predict(jacobian_f, dt, xk, pk, Q, ak, bk, ek, omega)
 
         # perform state update
         xk, pk = ecg_update(yk, dt, x_hat, p_hat)
