@@ -79,14 +79,9 @@ class ECGModel(QMainWindow):
         exportAction.triggered.connect(lambda: self.export_params())
         filemenu.addAction(exportAction)
 
-        ekfForm = QAction("EKF Form", self)
-        ekfForm.setStatusTip("Generate estimate from ECG sample")
-        ekfForm.triggered.connect(self.show_ekf_form)
-        filemenu.addAction(ekfForm)
-
         ekfAction = QAction("EKF", self)
         ekfAction.setStatusTip("Generate estimate from ECG sample")
-        ekfAction.triggered.connect(self.buildEKF)
+        ekfAction.triggered.connect(self.show_ekf_form)
         filemenu.addAction(ekfAction)
 
         # peakAction = QAction("Peak", self)
@@ -240,8 +235,14 @@ class ECGModel(QMainWindow):
         return slider.SliderDialog.getTimeFrame(self, tmax=tmax)
 
     def show_ekf_form(self):
-        opts = ekf_form.KalmanFilterForm.get_ekf_options(self)
-        print(opts)
+        sample = next((l for l in self.ax.get_lines() if l.get_label() == "sample"), None)
+        if not sample:
+            print("no sample found!")
+            return
+        opts, res = ekf_form.KalmanFilterForm.get_ekf_options(self)
+        if not res:
+            return
+        self.buildEKF(sample, opts)
 
     def show_build_err(self):
         msg = QMessageBox()
@@ -249,15 +250,6 @@ class ECGModel(QMainWindow):
         msg.setWindowTitle("Build Error")
         msg.setText("Build Error: could not generate ECG, check for invalid parameters")
         msg.exec()
-
-    def peakfind(self):
-        sample = next((l for l in self.ax.get_lines() if l.get_label() == "sample"), None)
-        if not sample:
-            print("no sample found!")
-            return
-        ts = sample.get_xdata()
-        ys = sample.get_ydata()
-        helper.findpeak(ts, ys)
 
     def set_defaults(self):
         self.set_entries(ECGModel.defaults)
@@ -355,22 +347,30 @@ class ECGModel(QMainWindow):
         self.ax.plot(sol.t, sol.y[2], "k--", label="estimate")
         self.redraw_axes()
 
-    def buildEKF(self):
+    def buildEKF(self, sample, opts):
         """Obtain values to perform Kalman Filtering with ODE """
-        sample = next((l for l in self.ax.get_lines() if l.get_label() == "sample"), None)
-        if not sample:
-            print("no sample found!")
-            return
-
-        ys = sample.get_ydata()
         ts = sample.get_xdata()
+        ys = sample.get_ydata()
 
-        a = [float(i) for i in ECGModel.defaults["a"]]
-        b = [float(i) for i in ECGModel.defaults["b"]]
-        evt = [helper.convert_pi(i) for i in ECGModel.defaults["evt"]]
-        omega = 2 * helper.pi
+        print(opts)
 
-        res = helper.solve_ecg_ekf(ys, ts, a, b, evt, omega)
-        self.removePlot("ekf")
-        self.ax.plot(res[0], res[1], 'r-', label='ekf')
-        self.redraw_axes()
+        if not opts[0]:
+            a = [float(i) for i in ECGModel.defaults["a"]]
+            b = [float(i) for i in ECGModel.defaults["b"]]
+            evt = [helper.convert_pi(i) for i in ECGModel.defaults["evt"]]
+            rr = helper.findpeak(ts, ys)
+            omega = 2 * helper.pi / rr
+        else:
+            try:
+                a, b, evt, omega = self.parseParams(*self.get_entries())
+            except:
+                self.show_build_err()
+                return
+
+        if not opts[1]:
+            res = helper.solve_ecg_ekf(ys, ts, a, b, evt, omega)
+            self.removePlot("ekf")
+            self.ax.plot(res[0], res[1], 'r-', label='ekf')
+            self.redraw_axes()
+        else:
+            print("start step-by-step ekf here")
