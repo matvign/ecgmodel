@@ -84,6 +84,11 @@ class ECGModel(QMainWindow):
         ekfAction.triggered.connect(self.buildEKF)
         filemenu.addAction(ekfAction)
 
+        peakAction = QAction("Peak", self)
+        peakAction.setStatusTip("Find Peaks")
+        peakAction.triggered.connect(self.peakfind)
+        filemenu.addAction(peakAction)
+
         resetAction = QAction("Reset", self)
         resetAction.setShortcut("Ctrl+R")
         resetAction.setStatusTip("Reset current parameters")
@@ -230,6 +235,15 @@ class ECGModel(QMainWindow):
         msg.setWindowTitle("Build Error")
         msg.setText("Build Error: could not generate ECG, check for invalid parameters")
         msg.exec()
+
+    def peakfind(self):
+        sample = next((l for l in self.ax.get_lines() if l.get_label() == "sample"), None)
+        if not sample:
+            print("no sample found!")
+            return
+        ts = sample.get_xdata()
+        ys = sample.get_ydata()
+        helper.findpeak(ts, ys)
 
     def set_defaults(self):
         self.set_entries(ECGModel.defaults)

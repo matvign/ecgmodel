@@ -6,6 +6,7 @@ import numpy as np
 import sympy as sp
 import numexpr as ne
 from scipy.integrate import solve_ivp
+from scipy.signal import find_peaks
 
 
 pi = np.pi
@@ -52,6 +53,18 @@ def import_csv(file):
     if csvdata.shape[0] == 0 or csvdata.shape[1] != 2:
         return None
     return csvdata
+
+
+def findpeak(ts, ys):
+    vals = np.array(ys)
+    peaks = find_peaks(ys, height=0, distance=70)
+    peak_times = [ts[i] for i in peaks[0]]
+    if len(peak_times) == 1:
+        peak_period = np.max(ts) - peak_times[0]
+    else:
+        peak_period = np.mean(np.diff(peak_times))
+    print(peaks)
+    print(peak_period)
 
 
 def filter_timeframe(data, timeframe):
