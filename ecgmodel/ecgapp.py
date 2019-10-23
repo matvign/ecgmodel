@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (QAction, QDesktopWidget, QFileDialog, QFormLayout,
                              QVBoxLayout, QWidget, qApp)
 
 from ecgmodel import slider, ekf_form
-from ecgmodel.helpers import helper
+from ecgmodel.helpers import denoise, helper
 
 
 class ECGModel(QMainWindow):
@@ -79,10 +79,10 @@ class ECGModel(QMainWindow):
         exportAction.triggered.connect(lambda: self.export_params())
         filemenu.addAction(exportAction)
 
-        ekfAction = QAction("EKF", self)
-        ekfAction.setStatusTip("Generate estimate from ECG sample")
-        ekfAction.triggered.connect(self.show_ekf_form)
-        filemenu.addAction(ekfAction)
+        denoiseAction = QAction("Denoise sample ECG", self)
+        denoiseAction.setStatusTip("Denoise sample ECG")
+        denoiseAction.triggered.connect(self.show_denoise_form)
+        filemenu.addAction(denoiseAction)
 
         # peakAction = QAction("Peak", self)
         # peakAction.setStatusTip("Find Peaks")
@@ -234,7 +234,7 @@ class ECGModel(QMainWindow):
     def show_slider_timeframe(self, tmax=1):
         return slider.SliderDialog.getTimeFrame(self, tmax=tmax)
 
-    def show_ekf_form(self):
+    def show_denoise_form(self):
         sample = next((l for l in self.ax.get_lines() if l.get_label() == "sample"), None)
         if not sample:
             print("no sample found!")
@@ -242,7 +242,7 @@ class ECGModel(QMainWindow):
         opts, res = ekf_form.KalmanFilterForm.get_ekf_options(self)
         if not res:
             return
-        self.buildEKF(sample, opts)
+        self.denoise_sample(sample, opts)
 
     def show_build_err(self):
         msg = QMessageBox()
@@ -347,8 +347,8 @@ class ECGModel(QMainWindow):
         self.ax.plot(sol.t, sol.y[2], "k--", label="estimate")
         self.redraw_axes()
 
-    def buildEKF(self, sample, opts):
-        """Obtain values to perform Kalman Filtering with ODE """
+    def denoise_sample(self, sample, opts):
+        """Denoise sample ECG with an Extended Kalman Filter """
         ts = sample.get_xdata()
         ys = sample.get_ydata()
 
@@ -368,7 +368,7 @@ class ECGModel(QMainWindow):
                 return
 
         if not opts[1]:
-            res = helper.solve_ecg_ekf(ys, ts, a, b, evt, omega)
+            res = denoise.denoise_ecg_ekf(ys, ts, a, b, evt, omega)
             self.removePlot("ekf")
             self.ax.plot(res[0], res[1], 'r-', label='ekf')
             self.redraw_axes()
