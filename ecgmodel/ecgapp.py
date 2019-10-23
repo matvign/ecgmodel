@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (QAction, QDesktopWidget, QFileDialog, QFormLayout,
                              QVBoxLayout, QWidget, qApp)
 
 from ecgmodel import slider, ekf_form
-from ecgmodel.helpers import denoise, helper
+from ecgmodel.helpers import denoise, helper, parameter_fit
 
 
 class ECGModel(QMainWindow):
@@ -83,6 +83,11 @@ class ECGModel(QMainWindow):
         denoiseAction.setStatusTip("Denoise sample ECG")
         denoiseAction.triggered.connect(self.show_denoise_form)
         filemenu.addAction(denoiseAction)
+
+        paramfitAction = QAction("paramfit sample ECG", self)
+        paramfitAction.setStatusTip("paramfit sample ECG")
+        paramfitAction.triggered.connect(self.parameter_fit_sample)
+        filemenu.addAction(paramfitAction)
 
         # peakAction = QAction("Peak", self)
         # peakAction.setStatusTip("Find Peaks")
@@ -369,8 +374,29 @@ class ECGModel(QMainWindow):
 
         if not opts[1]:
             res = denoise.denoise_ecg_ekf(ys, ts, a, b, evt, omega)
-            self.removePlot("ekf")
-            self.ax.plot(res[0], res[1], 'r-', label='ekf')
+            self.removePlot("denoise")
+            self.ax.plot(res[0], res[1], 'r-', label='denoise')
             self.redraw_axes()
         else:
             print("start step-by-step ekf here")
+
+    def parameter_fit_sample(self):
+        # sample = next((l for l in self.ax.get_lines() if l.get_label() == "sample"), None)
+        # if not sample:
+        #     print("no sample found!")
+        #     return
+        # ts = sample.get_xdata()
+        # ys = sample.get_ydata()
+
+        # a = [float(i) for i in ECGModel.defaults["a"]]
+        # b = [float(i) for i in ECGModel.defaults["b"]]
+        # evt = [helper.convert_pi(i) for i in ECGModel.defaults["evt"]]
+        # rr = helper.findpeak(ts, ys)
+        # omega = 2 * helper.pi / rr
+
+        # res = parameter_fit.ecg_parameter_est(ts, ys, a, b, evt, omega)
+        res = parameter_fit.main()
+        print(res[2])
+        self.removePlot("paramfit")
+        self.ax.plot(res[0], res[1], 'r--', label='paramfit')
+        self.redraw_axes()

@@ -3,7 +3,6 @@ import json
 import re
 
 import numpy as np
-import sympy as sp
 import numexpr as ne
 from scipy.integrate import solve_ivp
 from scipy.signal import find_peaks
@@ -82,13 +81,32 @@ def ecg_model(X, a, b, evt, omega=2*np.pi, z0=0):
     theta = np.arctan2(y, x)
     dtheta = [(theta - ei) for ei in evt]
 
-    alpha = 1.0 - np.sqrt(np.power(x, 2) + np.power(y, 2))
+    alpha = 1 - np.sqrt(x**2 + y**2)
     dX[0] = (alpha*x) - (omega*y)
     dX[1] = (alpha*y) + (omega*x)
     dX[2] = -(z - z0) - sum(
-        ((ai * omega * dthi) * np.exp(-(dthi**2)/(2*bi**2)))
+        ai * omega * dthi * np.exp(-(dthi**2)/(2*bi**2))
         for ai, bi, dthi in zip(a, b, dtheta)
     )
+    return dX
+
+
+def discrete_ecg_model(X, a, b, evt, dt, omega=2*np.pi, z0=0):
+    """Discrete version of ecg_model """
+    x, y, z = X
+    dX = np.zeros(3)
+    # dX = np.zeros(18)
+    theta = np.arctan2(y, x)
+    dtheta = [(theta - ei) for ei in evt]
+
+    alpha = 1 - np.sqrt(x**2 + y**2)
+    dX[0] = (1+alpha*dt)*x - omega*dt*y
+    dX[1] = (1+alpha*dt)*y + omega*dt*x
+    dX[2] = -((dt-1)*z - dt*z0) - sum((
+        ai * omega * dt * dthi * np.exp(-(dthi**2)/(2*bi**2)))
+        for ai, bi, dthi in zip(a, b, dtheta)
+    )
+    # dX[3:18] = [*a, *b, *evt]
     return dX
 
 
