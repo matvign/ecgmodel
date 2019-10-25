@@ -1,70 +1,130 @@
 #!/usr/bin/env python3
 import numpy as np
-import sympy as sp
 
 
-def ecg_discrete_polar(X, a, b, evt, dt, omega=2*np.pi, N=0):
+def polar_discrete_model(X, a, b, evt, dt, omega=2*np.pi, N=0):
     theta, z = X
     dX = np.zeros(2)
     dtheta = [(theta - ei) for ei in evt]
 
     dX[0] = theta + omega * dt
     dX[1] = z + (N * dt) - sum(
-        (ai * dt * omega * dthi) * np.exp(-(dthi**2)/(2*bi**2))
+        dt * omega * (ai/bi**2) * dthi * np.exp(-(dthi**2)/(2*bi**2))
         for ai, bi, dthi in zip(a, b, dtheta)
     )
     return dX
 
 
-def ecg_polar_state_jacobian():
-    """Jacobian function for process model wrt state """
-    theta, z = sp.symbols("theta, z")
-    a1, a2, a3, a4, a5 = sp.symbols("a1, a2, a3, a4, a5")
-    b1, b2, b3, b4, b5 = sp.symbols("b1, b2, b3, b4, b5")
-    e1, e2, e3, e4, e5 = sp.symbols("e1, e2, e3, e4, e5")
+def polar_state_jacobian(X, a, b, evt, dt, omega=2*np.pi):
+    """Polar ECG model jacobian wrt state variables theta, z """
+    theta, z = X
+    dtheta = [(theta - ei) for ei in evt]
 
-    a = [a1, a2, a3, a4, a5]
-    b = [b1, b2, b3, b4, b5]
-    e = [e1, e2, e3, e4, e5]
-    dth = [(theta - ei) for ei in e]
-    h = sp.symbols("h")
+    dF_theta = 1
+    dF_z = 0
 
-    dG_theta = sum(
-        (-h * ai * (1 - (dthi**2/b**2)) * sp.exp(-dthi**2/(2*bi**2)))
-        for ai, bi, dthi in zip(a, b, dth)
+    dG_theta = -sum((
+        dt * omega * (ai/bi**2) * (1 - (dthi**2/bi**2)) * np.exp(-(dthi**2)/2*bi**2))
+        for ai, bi, dthi in zip(a, b, dtheta)
     )
-
-    m = sp.matrix([
-        [1, 0],
-        [dG_theta, 1]
+    dG_z = 1
+    return np.matrix([
+        [dF_theta, dF_z],
+        [dG_theta, dG_z]
     ])
-    return sp.lambdify([theta, z, a1, a2, a3, a4, a5, b1, b2, b3, b4, b5,
-                        e1, e2, e3, e4, e5, h], m)
 
 
-def ecg_polar_noise_jacobian():
-    """Jacobian function for process model wrt noise """
-    theta, z = sp.symbols("theta, z")
-    w = sp.symbols("w")
-    a1, a2, a3, a4, a5 = sp.symbols("a1, a2, a3, a4, a5")
-    b1, b2, b3, b4, b5 = sp.symbols("b1, b2, b3, b4, b5")
-    e1, e2, e3, e4, e5 = sp.symbols("e1, e2, e3, e4, e5")
-    N = sp.symbols("N")
+def polar_state_jacobian2(X, a, b, evt, omega, dt):
+    """Polar ECG model jacobian wrt state variables
+    X = [theta, z, a1, .., a5, b1, .., b5, theta1, .., theta5, omega, N]
+    """
+    theta, z = X
+    dtheta = [(theta - ei) for ei in evt]
 
-    a = [a1, a2, a3, a4, a5]
-    b = [b1, b2, b3, b4, b5]
-    e = [e1, e2, e3, e4, e5]
-    dth = [(theta - ei) for ei in e]
-    h = sp.symbols("h")
+    dF_theta = 1
+    dF_z = 0
 
-    dG_a = [(-h * dthi * sp.exp(-dthi**2/2*bi**2)) for bi, dthi in zip(b, dth)]
-    dG_b = [(-h * ai * (dthi**3/bi**3) * sp.exp(-dthi**2/(2*bi**2))
-             for ai, bi, dthi in zip(a, b, dth))]
-    dG_e = [(h * ai * (1 - (dthi**2/bi**2)) * sp.exp(-dthi**2/(2*bi**2)))
-            for ai, bi, dthi in zip(a, b, dth)]
-    m = sp.matrix([0, *dG_a, *dG_b, *dG_e, 0, h])
-    return sp.lambdify([theta, z, a1, a2, a3, a4, a5, e1, e2, e3, e4, e5,
-                        b1, b2, b3, b4, b5, w, N, h])
+    dG_theta = -sum((
+        dt * (ai/bi**2) * omega * (1 - (dthi**2/bi**2)) * np.exp(-(dthi**2)/2*bi**2))
+        for ai, bi, dthi in zip(a, b, dtheta)
+    )
+    dG_z = 1
+    dG_ak = [
+        -dt * (omega/bi**2) * dthi * np.exp(-(dthi**2)/(2*bi**2))
+        for ai, bi, dthi in zip(a, b, dtheta)
+    ]
+    dG_bk = [
+        -2 * dt * (ai/bi**3) * omega * (1 - (dthi**2/2*bi**2)) * np.exp(-(dthi**2)/(2*bi**2))
+        for ai, bi, dthi in zip(a, b, dtheta)
+    ]
+    dG_ek = [
+        dt * (ai/bi**2) * omega * (1 - (dthi**2/2*bi**2)) * np.exp(-(dthi**2)/(2*bi**2))
+        for ai, bi, dthi in zip(a, b, dtheta)
+    ]
+    A = np.asmatrix(np.eye(17), dtype="float")
+    A[0, :2] = [dF_theta, dF_z]
+    A[1, :] = [dG_theta, dG_z, *dG_ak, *dG_bk, *dG_ek]
+    for i in range(2, 17):
+        A[i, i] = 1
+    return A
+
+
+def polar_noise_jacobian(X, a, b, evt, dt, omega=2*np.pi, N=0):
+    """Polar ECG model jacobian wrt process noise
+    wk = [a1, .., a5, b1, .., b5, theta1, .., theta5, omega, N]
+    """
+    theta, z = X
+    dtheta = [(theta - ei) for ei in evt]
+
+    dF_ak = [0 for i in range(0, 5)]
+    dF_bk = [0 for i in range(0, 5)]
+    dF_ek = [0 for i in range(0, 5)]
+    dF_omega = dt
+    dF_n = 0
+
+    dG_ak = [
+        -dt * omega * (dthi/bi**2) * np.exp(-(dthi**2)/(2*bi**2))
+        for ai, bi, dthi in zip(a, b, dtheta)
+    ]
+    dG_bk = [
+        2 * dt * omega * dthi * (ai/bi**3) * np.exp(-(dthi**2)/(2*bi**2))
+        for ai, bi, dthi in zip(a, b, dtheta)
+    ]
+    dG_ek = [
+        dt * omega * (ai/bi**2) * (1 - (dthi**2)/b**2) * np.exp(-(dthi**2)/(2*bi**2))
+        for ai, bi, dthi in zip(a, b, dtheta)
+    ]
+    dG_omega = -sum((
+        dt * dthi * (ai/bi**2) * np.exp(-(dthi**2)/(2*bi**2)))
+        for ai, bi, dthi in zip(a, b, dtheta)
+    )
+    dG_n = 1
+    return np.matrix([
+        [*dF_ak, *dF_bk, *dF_ek, dF_omega, dF_n],
+        [*dG_ak, *dG_bk, *dG_ek, dG_omega, dG_n]
+    ])
+
+
+def solve_ecg(a, b, evt, omega=2*np.pi):
+    arr_a = np.asarray(a, dtype="float")
+    arr_b = np.asarray(evt, dtype="float")
+    arr_evt = np.asarray(evt, dtype="float")
+
+    tk, tf = (0, 1)
+    ts = []
+    dt = 0.008
+
+    xk = np.array([-np.pi, 0], dtype="float")
+    xs = []
+
+    while tk < tf:
+        xk = polar_discrete_model(xk, a, b, evt, dt, omega)
+        xs.append(xk)
+
+        ts.append(tk)
+        tk += dt
+
+    return (ts, [i[1] for i in xs])
 
 
 def solve_ecg_ekf(ys, ts, a, b, evt, omega):
@@ -99,7 +159,7 @@ def solve_ecg_ekf(ys, ts, a, b, evt, omega):
     pk = np.asmatrix(np.eye(2), dtype="float")
 
     Q = np.asmatrix(np.eye(17), dtype="float")
-    jacobian_f = ecg_polar_state_jacobian()
+    jacobian_f = polar_discrete_model()
 
     a = np.asarray(a, dtype="float")
     b = np.asarray(b, dtype="float")
@@ -128,30 +188,6 @@ def solve_ecg_ekf(ys, ts, a, b, evt, omega):
 
     # return (ts, [i[2] for i in xs[:]])
     return (ts)
-
-
-def solve_ecg(a, b, evt, omega=2*np.pi):
-    arr_a = np.asarray(a, dtype="float")
-    arr_b = np.asarray(evt, dtype="float")
-    arr_evt = np.asarray(evt, dtype="float")
-
-    tk, tf = (0, 1)
-    ts = []
-    dt = 0.008
-
-    xk = np.array([-np.pi, 0], dtype="float")
-    xs = []
-
-    f = ecg_discrete_polar
-
-    while tk < tf:
-        xk = f(xk, a, b, evt, dt, omega)
-        xs.append(xk)
-
-        ts.append(tk)
-        tk += dt
-
-    return (ts, [i[1] for i in xs])
 
 
 def ecg_predict(jacobian, X, dt, P, Q, a, b, evt):
