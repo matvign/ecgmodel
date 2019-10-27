@@ -90,8 +90,8 @@ def state_jacobian():
 def parameter_est(ts, ys, a, b, evt, omega, z0=0):
     """Perform parameter estimation of ECG sample with EKF
 
-    xk: state
-    pk: covariance matrix
+    x: state vector
+    p: covariance matrix
 
     F: state transition model
     A: measurement function
