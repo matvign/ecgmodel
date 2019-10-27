@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (QAction, QDesktopWidget, QFileDialog, QFormLayout,
                              QVBoxLayout, QWidget, qApp)
 
 from ecgmodel import slider, ekf_form
-from ecgmodel.helpers import denoise, helper, parameter_fit
+from ecgmodel.helpers import denoise, helper, parameter_fit, polar_ekf
 
 
 class ECGModel(QMainWindow):
@@ -350,6 +350,12 @@ class ECGModel(QMainWindow):
         self.removePlot()
         sol = helper.solve_ecg(a, b, evt, omega)
         self.ax.plot(sol.t, sol.y[2], "k--", label="estimate")
+        self.redraw_axes()
+
+    def build_polar_ECG(self, a, b, evt, omega):
+        self.removePlot()
+        sol = polar_ekf.solve_ecg(a, b, evt, omega)
+        self.ax.plot(sol[0], sol[1], "k--", label="estimate")
         self.redraw_axes()
 
     def denoise_sample(self, sample, opts):
