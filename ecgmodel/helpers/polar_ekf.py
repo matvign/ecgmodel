@@ -2,15 +2,7 @@
 import numpy as np
 import sympy as sp
 
-
-def import_sample():
-    csvdata = np.genfromtxt("built.csv", delimiter=",", skip_header=2)
-    if csvdata.ndim != 2:
-        return None
-    if csvdata.shape[0] == 0 or csvdata.shape[1] != 2:
-        return None
-    data = csvdata[csvdata[:, 0] <= 1]
-    return (data[:, 0], data[:, 1])
+from ecgmodel.helpers import helper
 
 
 def defaults():
@@ -115,7 +107,7 @@ def state_jacobian_():
 
     theta_k = theta + omega * dt
     zk = z + (N*dt) - sum((
-        dt * ai * omega * dthi * np.exp(-(dthi**2)/(2*bi**2))
+        dt * ai * omega * dthi * sp.exp(-(dthi**2)/(2*bi**2))
         for ai, bi, dthi in zip(a, b, dtheta)
     ))
     ak = [(ai + ui) for ai, ui in zip(a, u[:5])]
@@ -173,7 +165,7 @@ def noise_jacobian_():
 
     theta_k = theta + omega * dt
     zk = z + (N*dt) - sum((
-        dt * ai * omega * dthi * np.exp(-(dthi**2)/(2*bi**2))
+        dt * ai * omega * dthi * sp.exp(-(dthi**2)/(2*bi**2))
         for ai, bi, dthi in zip(a, b, dtheta)
     ))
     ak = [(ai + ui) for ai, ui in zip(a, u[:5])]
@@ -220,7 +212,7 @@ def parameter_est(ys, ts, a, b, evt, omega):
     A = state_jacobian_()
     F = noise_jacobian_()
 
-    g = np.asarray([0, 1, *[0 for i in range(15)]])
+    g = np.matrix([0, 1, *[0 for i in range(15)]], dtype="float")
     C = g
     G = np.asmatrix(np.zeros(17))
 
@@ -236,8 +228,8 @@ def parameter_est(ys, ts, a, b, evt, omega):
 
         # perform state and covariance prediction
         x_hat = discrete_model(xk, dt, omega)
-        Ak = state_jacobian(xk, dt, omega)
-        Fk = noise_jacobian(xk, dt, omega)
+        Ak = A(xk, dt, omega)
+        Fk = F(xk, dt, omega)
         p_hat = Ak*pk*Ak.T + Fk*Qk*Fk.T
 
         # perform state update
@@ -260,6 +252,6 @@ def parameter_est(ys, ts, a, b, evt, omega):
 def main():
     np.set_printoptions(suppress=True)
     a, b, evt, omega = defaults()
-    ts, ys = import_sample()
+    ts, ys = helper.import_sample()
     res = parameter_est(ts, ys, a, b, evt, omega)
     return res

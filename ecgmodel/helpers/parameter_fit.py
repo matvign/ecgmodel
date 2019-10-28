@@ -2,15 +2,7 @@
 import numpy as np
 import sympy as sp
 
-
-def import_sample():
-    csvdata = np.genfromtxt("built.csv", delimiter=",", skip_header=2)
-    if csvdata.ndim != 2:
-        return None
-    if csvdata.shape[0] == 0 or csvdata.shape[1] != 2:
-        return None
-    data = csvdata[csvdata[:, 0] < 1]
-    return (data[:, 0], data[:, 1])
+from ecgmodel.helpers import helper
 
 
 def defaults():
@@ -161,6 +153,6 @@ def parameter_est(ts, ys, a, b, evt, omega, z0=0):
 def main():
     np.set_printoptions(suppress=True)
     a, b, evt, omega = defaults()
-    ts, ys = import_sample()
+    ts, ys = helper.import_sample()
     res = parameter_est(ts, ys, a, b, evt, omega)
     return res

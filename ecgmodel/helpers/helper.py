@@ -54,16 +54,50 @@ def import_csv(file):
     return csvdata
 
 
+def import_sample():
+    csvdata = np.genfromtxt("nsrdb-16265-ecg1.csv", delimiter=",", skip_header=2)
+    if csvdata.ndim != 2:
+        return None
+    if csvdata.shape[0] == 0 or csvdata.shape[1] != 2:
+        return None
+    data = csvdata[csvdata[:, 0] < 2]
+    return (data[:, 0], data[:, 1])
+
+
 def findpeak(ts, ys):
-    peaks = find_peaks(ys, height=0, distance=70)
-    peak_times = [ts[i] for i in peaks[0]]
-    if len(peak_times) == 1:
-        peak_period = np.max(ts) - peak_times[0]
+    indices, _ = find_peaks(ys, height=0, distance=70)
+    peak_ts = [ts[i] for i in indices]
+    if len(indices) == 1:
+        peak_period = peak_ts[0]
     else:
-        peak_period = np.mean(np.diff(peak_times))
-    print(peaks)
-    print(peak_times, peak_period)
-    return peak_period
+        peak_period = np.mean(np.diff(peak_ts))
+    print("indices: ", indices)
+    print("peak_period:", peak_period)
+    return (indices, peak_period)
+
+
+def phase_wrap():
+    ts, ys = import_sample()
+    peak_indices, peak_period = findpeak(ts, ys)
+    tdiff = np.diff([0, *peak_indices])
+    tdiff_avg = np.mean(tdiff)
+    print(tdiff, tdiff_avg)
+    p_ts = []
+    p_ts.extend(np.linspace(-np.pi, 0, tdiff[0], endpoint=False))
+    for dif in tdiff[1:]:
+        tmp = np.linspace(0, 2*np.pi, dif, endpoint=False)
+        tmp = [-1*(np.pi % i) if i > np.pi else i for i in tmp]
+        p_ts.extend(tmp)
+
+    """We estimate the remaining angle
+    We take the average number of samples between the r-peaks
+    we take a percentage of the samples left
+    """
+    rs = len(ts) - peak_indices[-1]
+    r_ts = 2*np.pi * (rs / tdiff_avg)
+    tmp = [-1*(np.pi % 1) if i > np.pi else i for i in np.linspace(0, r_ts, rs)]
+    p_ts.extend(tmp)
+    return p_ts
 
 
 def filter_timeframe(data, timeframe):
