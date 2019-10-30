@@ -13,42 +13,63 @@ def defaults():
     return (a, b, evt, omega)
 
 
-def transition_F(X, a, b, evt, omega, dt):
+def state_jacobian(dt, X, omega, z0=0):
     """F matrix for EKF """
-    x, y, z = X
-    theta = np.arctan2(y, x)
-    dtheta = [(theta - ei) for ei in evt]
+    x, y, z = X[0:3]
+    a = X[3:8]
+    b = X[8:13]
+    e = X[13:18]
+    # omega = X[18]
 
+    theta = np.arctan2(y, x)
+    dtheta = [(theta - ei) for ei in e]
     sq_xy = x**2 + y**2
     sqrt_xy = np.sqrt(sq_xy)
-    dX_x = 1 + dt - (2*dt*x**2 + dt*y**2)/sqrt_xy
-    dX_y = -omega*dt - (dt*x*y)/sqrt_xy
+
+    dX_x = 1+dt - ((2*dt*x**2 + dt*y**2)/sqrt_xy)
+    dX_y = -omega*dt - ((dt*x*y)/sqrt_xy)
     dX_z = 0
 
-    dY_x = omega*dt - (dt*x*y)/sqrt_xy
-    dY_y = 1+dt - (dt*x**2 + 2*dt*y**2)/sqrt_xy
+    dY_x = omega*dt - ((dt*x*y)/sqrt_xy)
+    dY_y = 1+dt - ((dt*x**2 + 2*dt*y**2)/sqrt_xy)
     dY_z = 0
 
     dZ_x = sum((
-        ((ai*omega*dt*y)/sq_xy) * np.exp(-(dthi**2)/(2*bi**2)) * (1 - (dthi**2/bi**2)))
+        (((ai/bi**2)*omega*dt*y)/sq_xy) * np.exp(-(dthi**2)/(2*bi**2)) * (1 - (dthi**2/bi**2)))
         for ai, bi, dthi in zip(a, b, dtheta)
     )
     dZ_y = sum((
-        (-(ai*omega*dt*x)/sq_xy) * np.exp(-(dthi**2)/(2*bi**2)) * (1 - (dthi**2/bi**2)))
+        ((-(ai/bi**2)*omega*dt*x)/sq_xy) * np.exp(-(dthi**2)/(2*bi**2)) * (1 - (dthi**2/bi**2)))
         for ai, bi, dthi in zip(a, b, dtheta)
     )
     dZ_z = 1-dt
+    dZ_ak = [
+        -dt * omega * dthi * np.exp(-(dthi**2)/(2*bi**2))
+        for ai, bi, dthi in zip(a, b, dtheta)
+    ]
+    dZ_bk = [
+        -(a/(b**3))*dt*omega*dthi**3 * np.exp(-(dthi**2)/(2*bi**2))
+        for ai, bi, dthi in zip(a, b, dtheta)
+    ]
+    dZ_ek = [
+        dt * (ai/bi**2) * omega * (1 - ((dthi**2)/(bi**2))) * np.exp(-(dthi**2)/(2*bi**2))
+        for ai, bi, dthi in zip(a, b, dtheta)
+    ]
+    dZ_omega = - sum((
+        dt * (ai/bi**2) * dthi * np.exp(-(dthi**2)/(2*bi**2)))
+        for ai, bi, dthi in zip(a, b, dtheta)
+    )
 
-    F = np.asmatrix(np.zeros((19, 19)), dtype="float")
+    F = np.asmatrix(np.zeros((18, 18)), dtype="float")
     F[0, :3] = [dX_x, dX_y, dX_z]
     F[1, :3] = [dY_x, dY_y, dY_z]
-    F[2, :3] = [dZ_x, dZ_y, dZ_z]
-    for i in range(3, 19):
+    F[2, :18] = [dZ_x, dZ_y, dZ_z, *dZ_ak, *dZ_bk, *dZ_ek]
+    for i in range(3, 18):
         F[i, i] = 1
     return F
 
 
-def state_jacobian():
+def state_jacobian2():
     """Return function for jacobian of state
     X = [x, y, z, a1, .., a5, b1, .., b5, e1, .., e5]
     """
@@ -56,9 +77,9 @@ def state_jacobian():
     omega = sp.symbols("omega")
     dt = sp.symbols("dt")
 
-    a = [*sp.symbols("a1, a2, a3, a4, a5")]
-    b = [*sp.symbols("b1, b2, b3, b4, b5")]
-    e = [*sp.symbols("e1, e2, e3, e4, e5")]
+    a = list(sp.symbols("a1, a2, a3, a4, a5"))
+    b = list(sp.symbols("b1, b2, b3, b4, b5"))
+    e = list(sp.symbols("e1, e2, e3, e4, e5"))
 
     alpha = 1 - sp.sqrt(x**2 + y**2)
     theta = sp.atan2(y, x)
@@ -66,17 +87,14 @@ def state_jacobian():
 
     F = (1 + alpha*dt)*x - omega*dt*y
     G = (1 + alpha*dt)*y + omega*dt*x
-    H = -((dt-1)*z - dt*z0) - sum(
+    H = -((dt-1)*z - (dt*z0)) - sum(
         ai * omega * dt * dthi * sp.exp(-(dthi**2)/(2*bi**2))
         for ai, bi, dthi in zip(a, b, dtheta)
     )
-    m = sp.Matrix([
-        [F, G, H, *a, *b, *e]
-    ])
+    m = sp.Matrix([F, G, H, *a, *b, *e])
     state = sp.Matrix([x, y, z, *a, *b, *e])
     j = m.jacobian(state)
-    # return j
-    return sp.lambdify([x, y, z, *a, *b, *e, omega, z0, dt], j)
+    return sp.lambdify([dt, x, y, z, *a, *b, *e, omega, z0], j)
 
 
 def parameter_est(ts, ys, a, b, evt, omega, z0=0):
@@ -105,19 +123,20 @@ def parameter_est(ts, ys, a, b, evt, omega, z0=0):
     Qk = np.asmatrix(np.eye(18)*Q, dtype="float")
     Rk = np.asmatrix([R])
 
-    F = state_jacobian()
-
     xs = []
     t_old = ts[0]
 
+    F = state_jacobian2()
+
     for tk, yk in zip(ts, ys):
         dt = tk - t_old
-        xk_t = np.asmatrix(xk, dtype="float").T
 
         # perform prediction
-        Fk = F(*xk, omega, z0, dt)
-        # F = transition_F(xk[0:3], xk[3:8], xk[8:13], xk[13:18], xk[18], dt)
-        x_hat = Fk * xk_t
+        x_hat = helper.discrete_ecg_model(dt, xk, omega)
+        x_hat = np.asmatrix(x_hat).T
+
+        # Fk = state_jacobian(dt, xk, omega, z0)
+        Fk = F(dt, *xk, omega, z0)
         p_hat = Fk * pk * Fk.T + Qk
         print("-- Prediction --")
         print("-- tk:", tk, "dt:", dt)
@@ -155,4 +174,5 @@ def main():
     a, b, evt, omega = defaults()
     ts, ys = helper.import_sample()
     res = parameter_est(ts, ys, a, b, evt, omega)
+    print(res[2])
     return res

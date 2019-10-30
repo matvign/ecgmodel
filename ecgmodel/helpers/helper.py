@@ -55,12 +55,13 @@ def import_csv(file):
 
 
 def import_sample():
-    csvdata = np.genfromtxt("nsrdb-16265-ecg1.csv", delimiter=",", skip_header=2)
+    # csvdata = np.genfromtxt("nsrdb-16265-ecg1.csv", delimiter=",", skip_header=2)
+    csvdata = np.genfromtxt("built.csv", delimiter=",", skip_header=2)
     if csvdata.ndim != 2:
         return None
     if csvdata.shape[0] == 0 or csvdata.shape[1] != 2:
         return None
-    data = csvdata[csvdata[:, 0] < 2]
+    data = csvdata[csvdata[:, 0] < 3]
     return (data[:, 0], data[:, 1])
 
 
@@ -125,22 +126,25 @@ def ecg_model(X, a, b, evt, omega=2*np.pi, z0=0):
     return dX
 
 
-def discrete_ecg_model(X, a, b, evt, dt, omega=2*np.pi, z0=0):
+def discrete_ecg_model(dt, X, omega, z0=0):
     """Discrete version of ecg_model """
-    x, y, z = X
-    dX = np.zeros(3)
-    # dX = np.zeros(18)
+    x, y, z = X[0:3]
+    a = X[3:8]
+    b = X[8:13]
+    e = X[13:18]
+    # omega = X[18]
     theta = np.arctan2(y, x)
-    dtheta = [(theta - ei) for ei in evt]
-
+    dtheta = [(theta - ei) for ei in e]
     alpha = 1 - np.sqrt(x**2 + y**2)
+
+    dX = np.zeros(18)
     dX[0] = (1+alpha*dt)*x - omega*dt*y
     dX[1] = (1+alpha*dt)*y + omega*dt*x
-    dX[2] = -((dt-1)*z - dt*z0) - sum((
-        ai * omega * dt * dthi * np.exp(-(dthi**2)/(2*bi**2)))
+    dX[2] = -((dt-1)*z - (dt*z0)) - sum(
+        ai * omega * dt * dthi * np.exp(-(dthi**2)/(2*bi**2))
         for ai, bi, dthi in zip(a, b, dtheta)
     )
-    # dX[3:18] = [*a, *b, *evt]
+    dX[3:18] = [*a, *b, *e]
     return dX
 
 
@@ -155,4 +159,6 @@ def solve_ecg(a, b, evt, omega):
     print("building...")
     fun = lambda t, y: ecg_model(y, a, b, evt, omega)
     sol = solve_ivp(fun=fun, t_span=tspan, y0=y0, t_eval=teval)
+    # for tk, yk in zip(sol.t, sol.y[2]):
+    #     print("{},{}".format(tk, yk))
     return sol

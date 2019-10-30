@@ -401,8 +401,14 @@ class ECGModel(QMainWindow):
         # omega = 2 * helper.pi / rr
 
         # res = parameter_fit.ecg_parameter_est(ts, ys, a, b, evt, omega)
-        res = polar_ekf.main()
-        print(res[2])
+        res = parameter_fit.main()
+        data = {
+            "a": res[2][0:5],
+            "b": res[2][5:10],
+            "evt": res[2][10:15],
+            "omega": [str(2*helper.pi)]
+        }
         self.removePlot("paramfit")
         self.ax.plot(res[0], res[1], 'r--', label='paramfit')
+        self.set_entries(data)
         self.redraw_axes()
