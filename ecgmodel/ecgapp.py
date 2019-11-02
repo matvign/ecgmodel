@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (QAction, QDesktopWidget, QFileDialog, QFormLayout,
                              QVBoxLayout, QWidget, qApp)
 
 from ecgmodel import slider, ekf_form
-from ecgmodel.helpers import denoise, helper, parameter_fit, polar_ekf
+from ecgmodel.helpers import helper, parameter_fit
 
 
 class ECGModel(QMainWindow):
@@ -79,14 +79,9 @@ class ECGModel(QMainWindow):
         exportAction.triggered.connect(lambda: self.export_params())
         filemenu.addAction(exportAction)
 
-        denoiseAction = QAction("Denoise sample ECG", self)
-        denoiseAction.setStatusTip("Denoise sample ECG")
-        denoiseAction.triggered.connect(self.show_denoise_form)
-        filemenu.addAction(denoiseAction)
-
-        paramfitAction = QAction("paramfit sample ECG", self)
-        paramfitAction.setStatusTip("paramfit sample ECG")
-        paramfitAction.triggered.connect(self.parameter_fit_sample)
+        paramfitAction = QAction("Parameter Fit Sample", self)
+        paramfitAction.setStatusTip("Parameter Fit Sample ECG")
+        paramfitAction.triggered.connect(self.parameter_fit)
         filemenu.addAction(paramfitAction)
 
         # peakAction = QAction("Peak", self)
@@ -227,7 +222,7 @@ class ECGModel(QMainWindow):
             entry_evt.insert(str(data["evt"][i]))
 
         entry_omega.clear()
-        entry_omega.insert(data["omega"][0])
+        entry_omega.insert(str(data["omega"][0]))
 
     def show_import_err(self, filename):
         msg = QMessageBox()
@@ -352,41 +347,7 @@ class ECGModel(QMainWindow):
         self.ax.plot(sol.t, sol.y[2], "k--", label="estimate")
         self.redraw_axes()
 
-    def build_polar_ECG(self, a, b, evt, omega):
-        self.removePlot()
-        sol = polar_ekf.solve_ecg(a, b, evt, omega)
-        self.ax.plot(sol[0], sol[1], "k--", label="estimate")
-        self.redraw_axes()
-
-    def denoise_sample(self, sample, opts):
-        """Denoise sample ECG with an Extended Kalman Filter """
-        ts = sample.get_xdata()
-        ys = sample.get_ydata()
-
-        print(opts)
-
-        if not opts[0]:
-            a = [float(i) for i in ECGModel.defaults["a"]]
-            b = [float(i) for i in ECGModel.defaults["b"]]
-            evt = [helper.convert_pi(i) for i in ECGModel.defaults["evt"]]
-            rr = helper.findpeak(ts, ys)
-            omega = 2 * helper.pi / rr
-        else:
-            try:
-                a, b, evt, omega = self.parseParams(*self.get_entries())
-            except:
-                self.show_build_err()
-                return
-
-        if not opts[1]:
-            res = denoise.denoise_ecg_ekf(ys, ts, a, b, evt, omega)
-            self.removePlot("denoise")
-            self.ax.plot(res[0], res[1], 'r-', label='denoise')
-            self.redraw_axes()
-        else:
-            print("start step-by-step ekf here")
-
-    def parameter_fit_sample(self):
+    def parameter_fit(self):
         # sample = next((l for l in self.ax.get_lines() if l.get_label() == "sample"), None)
         # if not sample:
         #     print("no sample found!")
@@ -406,7 +367,7 @@ class ECGModel(QMainWindow):
             "a": res[2][0:5],
             "b": res[2][5:10],
             "evt": res[2][10:15],
-            "omega": [str(2*helper.pi)]
+            "omega": [res[2][15]]
         }
         self.removePlot("paramfit")
         self.ax.plot(res[0], res[1], 'r--', label='paramfit')

@@ -12,19 +12,12 @@ pi = np.pi
 pi_regx = re.compile(r"(pi\s*|[0-9.]+)(?=(\s*pi|[0-9.]))")
 
 
-def convert_pi(val):
-    def _pirepl(word):
-        def repl(matchobj):
-            if matchobj.group(1).strip() == "pi":
-                return "{}*".format(matchobj.group(1))
-            elif matchobj.group(2).strip() == "pi":
-                return "{}*".format(matchobj.group(1))
-            else:
-                return matchobj.group(0)
-        return re.sub(pi_regx, repl, word)
-
-    val = ne.evaluate(_pirepl(val), {"pi": np.pi})
-    return float(np.asscalar(val))
+def defaults():
+    a = np.array([12, -50, 300, -75, 7.5])
+    b = np.array([0.25, 0.1, 0.1, 0.1, 0.4])
+    evt = np.array([-np.pi/3, -np.pi/12, 0, np.pi/12, np.pi/2])
+    omega = 2*np.pi
+    return (a, b, evt, omega)
 
 
 def import_json(file):
@@ -61,8 +54,23 @@ def import_sample():
         return None
     if csvdata.shape[0] == 0 or csvdata.shape[1] != 2:
         return None
-    data = csvdata[csvdata[:, 0] < 3]
+    data = csvdata[csvdata[:, 0] <= 5]
     return (data[:, 0], data[:, 1])
+
+
+def convert_pi(val):
+    def _pirepl(word):
+        def repl(matchobj):
+            if matchobj.group(1).strip() == "pi":
+                return "{}*".format(matchobj.group(1))
+            elif matchobj.group(2).strip() == "pi":
+                return "{}*".format(matchobj.group(1))
+            else:
+                return matchobj.group(0)
+        return re.sub(pi_regx, repl, word)
+
+    val = ne.evaluate(_pirepl(val), {"pi": np.pi})
+    return float(np.asscalar(val))
 
 
 def findpeak(ts, ys):
@@ -90,10 +98,6 @@ def phase_wrap():
         tmp = [-1*(np.pi % i) if i > np.pi else i for i in tmp]
         p_ts.extend(tmp)
 
-    """We estimate the remaining angle
-    We take the average number of samples between the r-peaks
-    we take a percentage of the samples left
-    """
     rs = len(ts) - peak_indices[-1]
     r_ts = 2*np.pi * (rs / tdiff_avg)
     tmp = [-1*(np.pi % 1) if i > np.pi else i for i in np.linspace(0, r_ts, rs)]
@@ -126,26 +130,26 @@ def ecg_model(X, a, b, evt, omega=2*np.pi, z0=0):
     return dX
 
 
-def discrete_ecg_model(dt, X, omega, z0=0):
+def discrete_ecg_model(dt, X, z0=0):
     """Discrete version of ecg_model """
     x, y, z = X[0:3]
     a = X[3:8]
     b = X[8:13]
     e = X[13:18]
-    # omega = X[18]
+    omega = X[18]
     theta = np.arctan2(y, x)
     dtheta = [(theta - ei) for ei in e]
     alpha = 1 - np.sqrt(x**2 + y**2)
 
-    dX = np.zeros(18)
-    dX[0] = (1+alpha*dt)*x - omega*dt*y
-    dX[1] = (1+alpha*dt)*y + omega*dt*x
-    dX[2] = -((dt-1)*z - (dt*z0)) - sum(
+    Xk = np.zeros(19)
+    Xk[0] = (1+alpha*dt)*x - (omega*dt*y)
+    Xk[1] = (1+alpha*dt)*y + (omega*dt*x)
+    Xk[2] = -((dt-1)*z - (dt*z0)) - sum(
         ai * omega * dt * dthi * np.exp(-(dthi**2)/(2*bi**2))
         for ai, bi, dthi in zip(a, b, dtheta)
     )
-    dX[3:18] = [*a, *b, *e]
-    return dX
+    Xk[3:19] = [*a, *b, *e, omega]
+    return Xk
 
 
 def solve_ecg(a, b, evt, omega):
