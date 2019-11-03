@@ -52,7 +52,9 @@ def parameter_est(ts, ys, a, b, evt, omega, z0=0):
 
     """
     xk = np.array([-1, 0, 0, *a, *b, *evt, omega])
-    pk = np.asmatrix(np.eye(19)*1, dtype="float")
+
+    P = float(1)
+    pk = np.asmatrix(np.eye(19)*P, dtype="float")
 
     Q = float(1)
     R = float(1)

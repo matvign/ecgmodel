@@ -107,7 +107,7 @@ class ECGModel(QMainWindow):
 
         clearEKF = QAction("Clear EKF", self)
         clearEKF.setStatusTip("Remove EKF plot")
-        clearEKF.triggered.connect(lambda: self.removePlot("ekf"))
+        clearEKF.triggered.connect(lambda: self.removePlot("paramfit"))
         filemenu.addAction(clearEKF)
 
         clearAll = QAction("Clear All", self)
