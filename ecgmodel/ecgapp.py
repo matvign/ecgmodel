@@ -348,21 +348,23 @@ class ECGModel(QMainWindow):
         self.redraw_axes()
 
     def parameter_fit(self):
-        # sample = next((l for l in self.ax.get_lines() if l.get_label() == "sample"), None)
-        # if not sample:
-        #     print("no sample found!")
-        #     return
-        # ts = sample.get_xdata()
-        # ys = sample.get_ydata()
+        sample = next((l for l in self.ax.get_lines() if l.get_label() == "sample"), None)
+        if not sample:
+            print("no sample found!")
+            return
+        ts = sample.get_xdata()
+        ys = sample.get_ydata()
 
-        # a = [float(i) for i in ECGModel.defaults["a"]]
-        # b = [float(i) for i in ECGModel.defaults["b"]]
-        # evt = [helper.convert_pi(i) for i in ECGModel.defaults["evt"]]
-        # rr = helper.findpeak(ts, ys)
-        # omega = 2 * helper.pi / rr
+        try:
+            a, b, e, omega = self.parseParams(*self.get_entries())
+            # rr = helper.findpeak(ts, ys)
+            # omega = 2 * helper.pi / rr
+        except:
+            self.show_build_err()
+            return
 
-        # res = parameter_fit.ecg_parameter_est(ts, ys, a, b, evt, omega)
-        res = parameter_fit.main()
+        res = parameter_fit.parameter_est(ts, ys, a, b, e, omega)
+        # res = parameter_fit.main()
         data = {
             "a": res[2][0:5],
             "b": res[2][5:10],
