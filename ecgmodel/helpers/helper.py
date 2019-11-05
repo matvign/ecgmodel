@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import csv
 import json
 import re
 
@@ -20,6 +21,17 @@ def defaults():
     return (a, b, evt, omega)
 
 
+def import_sample():
+    csvdata = np.genfromtxt("built3.csv", delimiter=",", skip_header=2)
+    # csvdata = np.genfromtxt("nsrdb-16483-ecg1.csv", delimiter=",", skip_header=2)
+    if csvdata.ndim != 2:
+        return None
+    if csvdata.shape[0] == 0 or csvdata.shape[1] != 2:
+        return None
+    data = csvdata[csvdata[:, 0] <= 9]
+    return (data[:, 0], data[:, 1])
+
+
 def import_json(file):
     with open(file) as f:
         data = json.load(f)
@@ -32,12 +44,6 @@ def import_json(file):
         return data
 
 
-def export_json(filename, a, b, evt, omega):
-    data = {"a": a, "b": b, "evt": evt, "omega": [omega]}
-    with open(filename, "w") as outfile:
-        json.dump(data, outfile, indent=4)
-
-
 def import_csv(file):
     csvdata = np.genfromtxt(file, delimiter=",", skip_header=2)
     if csvdata.ndim != 2:
@@ -47,15 +53,20 @@ def import_csv(file):
     return csvdata
 
 
-def import_sample():
-    csvdata = np.genfromtxt("built3.csv", delimiter=",", skip_header=2)
-    # csvdata = np.genfromtxt("nsrdb-16483-ecg1.csv", delimiter=",", skip_header=2)
-    if csvdata.ndim != 2:
-        return None
-    if csvdata.shape[0] == 0 or csvdata.shape[1] != 2:
-        return None
-    data = csvdata[csvdata[:, 0] <= 9]
-    return (data[:, 0], data[:, 1])
+def export_json(filename, a, b, evt, omega):
+    data = {"a": a, "b": b, "evt": evt, "omega": [omega]}
+    with open(filename, "w") as outfile:
+        json.dump(data, outfile, indent=4)
+
+
+def export_csv(filename, ecg):
+    ts, ys = ecg.get_xdata(), ecg.get_ydata()
+    with open(filename, 'w', newline='') as csvfile:
+        ecgwriter = csv.writer(csvfile, delimiter=",")
+        ecgwriter.writerows([["'Elapsed time'", "'ECG1'"],
+                            ["'seconds'", "'mv'"]])
+        for tk, yk in zip(ts, ys):
+            ecgwriter.writerow([tk, yk])
 
 
 def convert_pi(val):

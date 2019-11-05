@@ -319,13 +319,26 @@ class ECGModel(QMainWindow):
 
     def export_params(self, filename="ecgdata.json"):
         caption = "Export Parameters"
-        path = "ecgdata.json"
+        path = filename
         f_filter = "JSON (*.json)"
         fileName = QFileDialog.getSaveFileName(self, caption, path, f_filter)
         if not fileName[0]:
             return
         a, b, evt, omega, _ = self.get_entries()
         helper.export_json(fileName[0], a, b, evt, omega)
+
+    def export_csv(self, filename="ecg.csv"):
+        ecg = next((l for l in self.ax.get_lines() if l.get_label() == "estimate"), None)
+        if not ecg:
+            self.show_information("Export CSV", "No sample to estimate paramters")
+            return
+        caption = "Export Parameters"
+        path = filename
+        f_filter = "CSV (*.csv)"
+        fileName = QFileDialog.getSaveFileName(self, caption, path, f_filter)
+        if not fileName[0]:
+            return
+        helper.export_csv(fileName[0], ecg)
 
     def removePlot(self, ln="estimate"):
         for l in self.ax.get_lines():
@@ -339,11 +352,11 @@ class ECGModel(QMainWindow):
         self.redraw_axes()
 
     def parseParams(self, a, b, evt, omega):
-        arr_a = [float(i) for i in a]
-        arr_b = [float(i) for i in b]
-        arr_evt = [helper.convert_pi(i) for i in evt]
+        a_ = [float(i) for i in a]
+        b_ = [float(i) for i in b]
+        evt_ = [helper.convert_pi(i) for i in evt]
         omega_ = helper.convert_pi(omega)
-        return (arr_a, arr_b, arr_evt, omega_)
+        return (a_, b_, evt_, omega_)
 
     def redraw_axes(self):
         self.ax.relim()
