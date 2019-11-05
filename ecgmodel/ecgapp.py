@@ -168,6 +168,13 @@ class ECGModel(QMainWindow):
         entry_omega = make_entry(pi_validator)
         entry_omega.insert(ECGModel.defaults["omega"][0])
 
+        t_entry = QLineEdit()
+        t_entry.setFixedWidth(30)
+        t_entry.setMaxLength(5)
+        t_validator = QRegExpValidator(QRegExp(r"\d"))
+        t_entry.setValidator(t_validator)
+        t_entry.insert(str(1))
+
         # create a form
         self.formlayout = QFormLayout()
         self.formlayout.setVerticalSpacing(40)
@@ -176,6 +183,7 @@ class ECGModel(QMainWindow):
         self.formlayout.addRow("b", entries_b)
         self.formlayout.addRow("theta", entries_evt)
         self.formlayout.addRow("omega", entry_omega)
+        self.formlayout.addRow("t(s)", t_entry)
 
         button = QPushButton("Build")
         button.setToolTip("Generate ECG with parameters")
@@ -199,8 +207,9 @@ class ECGModel(QMainWindow):
         b = [entries_b.itemAt(i).widget().text() for i in range(5)]
         evt = [entries_evt.itemAt(i).widget().text() for i in range(5)]
         omega = self.formlayout.itemAt(3, 1).widget().text()
+        tf = self.formlayout.itemAt(4, 1).widget().text()
 
-        return (a, b, evt, omega)
+        return (a, b, evt, omega, tf)
 
     def set_entries(self, data):
         entries_a = self.formlayout.itemAt(0, 1)
@@ -280,7 +289,7 @@ class ECGModel(QMainWindow):
         fileName = QFileDialog.getSaveFileName(self, caption, path, f_filter)
         if not fileName[0]:
             return
-        a, b, evt, omega = self.get_entries()
+        a, b, evt, omega, _ = self.get_entries()
         helper.export_json(fileName[0], a, b, evt, omega)
 
     def import_sample(self, filename, timeframe=1):
@@ -335,15 +344,17 @@ class ECGModel(QMainWindow):
 
     def buildParams(self):
         try:
-            arr_a, arr_b, arr_evt, omega_ = self.parseParams(*self.get_entries())
+            a_, b_, evt_, omega_, t = self.get_entries()
+            a, b, evt, omega = self.parseParams(a_, b_, evt_, omega_)
+            t = int(t)
         except:
             self.show_build_err()
             return
-        self.buildECG(arr_a, arr_b, arr_evt, omega_)
+        self.buildECG(a, b, evt, omega, t)
 
-    def buildECG(self, a, b, evt, omega):
+    def buildECG(self, a, b, evt, omega, tf):
         self.removePlot()
-        sol = helper.solve_ecg(a, b, evt, omega)
+        sol = helper.solve_ecg(a, b, evt, omega, tf)
         self.ax.plot(sol.t, sol.y[2], "k--", label="estimate")
         self.redraw_axes()
 

@@ -152,17 +152,18 @@ def discrete_ecg_model(dt, X, z0=0):
     return Xk
 
 
-def solve_ecg(a, b, evt, omega):
+def solve_ecg(a, b, evt, omega, tf=1):
     arr_a = np.asarray(a, dtype="float")
     arr_b = np.asarray(b, dtype="float")
     arr_evt = np.asarray(evt, dtype="float")
+    if not tf:
+        tf = 1
 
-    tspan = (0, 1)
     y0 = np.array([-1, 0, 0])
-    teval = np.linspace(0, 1, num=100)
-    print("building...")
+    teval = np.linspace(0, tf, num=tf*100)
     fun = lambda t, y: ecg_model(y, a, b, evt, omega)
-    sol = solve_ivp(fun=fun, t_span=tspan, y0=y0, t_eval=teval)
+    print("solving...")
+    sol = solve_ivp(fun=fun, t_span=(0, tf), y0=y0, t_eval=teval)
     # for tk, yk in zip(sol.t, sol.y[2]):
     #     print("{},{}".format(tk, yk))
     return sol
