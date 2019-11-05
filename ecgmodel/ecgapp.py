@@ -56,71 +56,85 @@ class ECGModel(QMainWindow):
 
     def initMenu(self):
         menubar = self.menuBar()
-
         filemenu = menubar.addMenu("File")
 
-        importmenu = QMenu("Import", self)
+        # import menu
         importParam = QAction("Import Parameters", self)
         importParam.setShortcut("Ctrl+O")
         importParam.triggered.connect(self.import_params)
-        importmenu.addAction(importParam)
 
         importSample = QAction("Import Sample", self)
         importSample.setShortcut("Ctrl+Shift+O")
         importSample.setStatusTip("Import sample ECG data")
         importSample.triggered.connect(self.import_sample)
+
+        importmenu = QMenu("Import", self)
+        importmenu.addAction(importParam)
         importmenu.addAction(importSample)
 
-        filemenu.addMenu(importmenu)
+        # export menu
+        exportParam = QAction("Export Parameters", self)
+        exportParam.setShortcut("Ctrl+Shift+S")
+        exportParam.setStatusTip("Export current parameters")
+        exportParam.triggered.connect(lambda: self.export_params())
 
-        exportAction = QAction("Export", self)
-        exportAction.setShortcut("Ctrl+S")
-        exportAction.setStatusTip("Export current parameters")
-        exportAction.triggered.connect(lambda: self.export_params())
-        filemenu.addAction(exportAction)
+        exportCSV = QAction("Export CSV", self)
+        exportCSV.setShortcut("Ctrl+S")
+        exportCSV.setStatusTip("Export generated ECG")
+        exportCSV.triggered.connect(lambda: self.export_csv())
 
-        paramfitAction = QAction("Parameter Fit Sample", self)
-        paramfitAction.setStatusTip("Parameter Fit Sample ECG")
-        paramfitAction.triggered.connect(self.parameter_fit)
-        filemenu.addAction(paramfitAction)
+        exportmenu = QMenu("Export", self)
+        exportmenu.addAction(exportParam)
+        exportmenu.addAction(exportCSV)
 
-        # peakAction = QAction("Peak", self)
-        # peakAction.setStatusTip("Find Peaks")
-        # peakAction.triggered.connect(self.peakfind)
-        # filemenu.addAction(peakAction)
+        # clear menu
+        clearEstimate = QAction("Clear Estimate", self)
+        clearEstimate.setStatusTip("Remove ECG estimate")
+        clearEstimate.triggered.connect(lambda: self.removePlot())
+
+        clearSample = QAction("Clear Sample", self)
+        clearSample.setStatusTip("Remove ECG sample")
+        clearSample.triggered.connect(lambda: self.removePlot("sample"))
+
+        clearEKF = QAction("Clear EKF", self)
+        clearEKF.setStatusTip("Remove EKF plot")
+        clearEKF.triggered.connect(lambda: self.removePlot("paramfit"))
+
+        clearAll = QAction("Clear All", self)
+        clearAll.setStatusTip("Clear all graphs")
+        clearAll.triggered.connect(self.removeAll)
+
+        clearmenu = QMenu("Clear", self)
+        clearmenu.addAction(clearEstimate)
+        clearmenu.addAction(clearSample)
+        clearmenu.addAction(clearEKF)
+        clearmenu.addAction(clearAll)
 
         resetAction = QAction("Reset", self)
         resetAction.setShortcut("Ctrl+R")
         resetAction.setStatusTip("Reset current parameters")
         resetAction.triggered.connect(self.set_defaults)
-        filemenu.addAction(resetAction)
 
-        clearSample = QAction("Clear Sample", self)
-        clearSample.setStatusTip("Remove ECG sample")
-        clearSample.triggered.connect(lambda: self.removePlot("sample"))
-        filemenu.addAction(clearSample)
+        # peakAction = QAction("Peak", self)
+        # peakAction.setStatusTip("Find Peaks")
+        # peakAction.triggered.connect(self.peakfind)
 
-        clearEstimate = QAction("Clear Estimate", self)
-        clearEstimate.setStatusTip("Remove ECG estimate")
-        clearEstimate.triggered.connect(lambda: self.removePlot())
-        filemenu.addAction(clearEstimate)
-
-        clearEKF = QAction("Clear EKF", self)
-        clearEKF.setStatusTip("Remove EKF plot")
-        clearEKF.triggered.connect(lambda: self.removePlot("paramfit"))
-        filemenu.addAction(clearEKF)
-
-        clearAll = QAction("Clear All", self)
-        clearAll.setStatusTip("Clear all graphs")
-        clearAll.triggered.connect(self.removeAll)
-        filemenu.addAction(clearAll)
+        paramfitAction = QAction("Parameter Fit Sample", self)
+        paramfitAction.setStatusTip("Parameter Fit Sample ECG")
+        paramfitAction.triggered.connect(self.parameter_fit)
 
         exitAction = QAction("Exit", self)
         exitAction.setShortcut("Ctrl+Q")
         exitAction.setStatusTip("Exit application")
         exitAction.triggered.connect(qApp.quit)
-        filemenu.addAction(exitAction)
 
+        filemenu.addMenu(importmenu)
+        filemenu.addMenu(exportmenu)
+        filemenu.addMenu(clearmenu)
+        filemenu.addAction(resetAction)
+        # filemenu.addAction(peakAction)
+        filemenu.addAction(paramfitAction)
+        filemenu.addAction(exitAction)
         aboutmenu = menubar.addMenu("About")
 
     def init_ecgframe(self):
@@ -233,12 +247,8 @@ class ECGModel(QMainWindow):
         entry_omega.clear()
         entry_omega.insert(str(data["omega"][0]))
 
-    def show_import_err(self, filename):
-        msg = QMessageBox()
-        msg.setIcon(QMessageBox.Warning)
-        msg.setWindowTitle("Import Error")
-        msg.setText("Import Error: invalid file contains invalid data")
-        msg.exec()
+    def set_defaults(self):
+        self.set_entries(ECGModel.defaults)
 
     def show_slider_timeframe(self, tmax=1):
         return slider.SliderDialog.getTimeFrame(self, tmax=tmax)
@@ -253,15 +263,19 @@ class ECGModel(QMainWindow):
             return
         self.denoise_sample(sample, opts)
 
-    def show_build_err(self):
+    def show_warning(self, title, message):
         msg = QMessageBox()
-        msg.setIcon(QMessageBox.Information)
-        msg.setWindowTitle("Build Error")
-        msg.setText("Build Error: could not generate ECG, check for invalid parameters")
+        msg.setIcon(QMessageBox.Warning)
+        msg.setWindowTitle(title)
+        msg.setText(message)
         msg.exec()
 
-    def set_defaults(self):
-        self.set_entries(ECGModel.defaults)
+    def show_information(self, title, message):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Information)
+        msg.setWindowTitle(title)
+        msg.setText(message)
+        msg.exec()
 
     def import_params(self):
         caption = "Import Parameters"
@@ -271,26 +285,16 @@ class ECGModel(QMainWindow):
         if not fileName[0]:
             return
         data = helper.import_json(fileName[0])
-        if not data:
-            self.show_import_err(fileName[0])
-            return
         try:
+            if not data:
+                self.show_warning("Import Error", "Import Error: file contains invalid parameters")
+                return
             a, b, evt, omega = self.parseParams(data["a"], data["b"], data["evt"], data["omega"][0])
         except:
-            self.show_import_err(fileName[0])
+            self.show_warning("Import Error", "Import Error: file contains invalid parameters")
             return
         self.set_entries(data)
         self.buildECG(a, b, evt, omega)
-
-    def export_params(self, filename="ecgdata.json"):
-        caption = "Export Parameters"
-        path = "ecgdata.json"
-        f_filter = "JSON (*.json)"
-        fileName = QFileDialog.getSaveFileName(self, caption, path, f_filter)
-        if not fileName[0]:
-            return
-        a, b, evt, omega, _ = self.get_entries()
-        helper.export_json(fileName[0], a, b, evt, omega)
 
     def import_sample(self, filename, timeframe=1):
         caption = "Import ECG Sample"
@@ -303,7 +307,7 @@ class ECGModel(QMainWindow):
         tmax = samples[:, 0][-1]
 
         if samples is None:
-            helper.show_import_err(fileName[0])
+            self.show_warning("Import Error", "Import Error: sample contains invalid data")
         tframe, res = self.show_slider_timeframe(tmax=tmax)
         if not res:
             return
@@ -312,6 +316,16 @@ class ECGModel(QMainWindow):
         self.removePlot("sample")
         self.ax.plot(data[0:, 0], data[0:, 1], "b-", label="sample")
         self.redraw_axes()
+
+    def export_params(self, filename="ecgdata.json"):
+        caption = "Export Parameters"
+        path = "ecgdata.json"
+        f_filter = "JSON (*.json)"
+        fileName = QFileDialog.getSaveFileName(self, caption, path, f_filter)
+        if not fileName[0]:
+            return
+        a, b, evt, omega, _ = self.get_entries()
+        helper.export_json(fileName[0], a, b, evt, omega)
 
     def removePlot(self, ln="estimate"):
         for l in self.ax.get_lines():
@@ -348,7 +362,7 @@ class ECGModel(QMainWindow):
             a, b, evt, omega = self.parseParams(a_, b_, evt_, omega_)
             t = int(t)
         except:
-            self.show_build_err()
+            self.show_information("Build Error", "Build Error: could not generate ECG, check for invalid parameters")
             return
         self.buildECG(a, b, evt, omega, t)
 
@@ -361,7 +375,7 @@ class ECGModel(QMainWindow):
     def parameter_fit(self):
         sample = next((l for l in self.ax.get_lines() if l.get_label() == "sample"), None)
         if not sample:
-            print("no sample found!")
+            self.show_warning("Warning", "No sample to estimate paramters")
             return
         ts = sample.get_xdata()
         ys = sample.get_ydata()
@@ -371,7 +385,7 @@ class ECGModel(QMainWindow):
             # rr = helper.findpeak(ts, ys)
             # omega = 2 * helper.pi / rr
         except:
-            self.show_build_err()
+            self.show_information("Build Error", "Build Error: could not generate ECG, check for invalid parameters")
             return
 
         res = parameter_fit.parameter_est(ts, ys, a, b, e, omega)
