@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QDialog, QDialogButtonBox, QGroupBox, QVBoxLayout,
-    QRadioButton)
+from PyQt5.QtCore import QRegExp, Qt
+from PyQt5.QtGui import QRegExpValidator
+from PyQt5.QtWidgets import (QDialog, QDialogButtonBox, QFormLayout,
+                             QGroupBox, QLineEdit, QVBoxLayout)
 
 
 class KalmanFilterForm(QDialog):
@@ -15,35 +16,18 @@ class KalmanFilterForm(QDialog):
         super().__init__()
 
         self.setWindowTitle("Extended Kalman Filter")
-        self.setMinimumSize(550, 500)
+        self.setMinimumSize(550, 50)
 
-        self.paramOpt = 0
-        paramBox = QGroupBox("Parameter options:")
-        paramLayout = QVBoxLayout(paramBox)
-        initialOption = QRadioButton("Use pre-determined initial values", self)
-        initialOption.setChecked(True)
-        dynamOption = QRadioButton("Use dynamic parameters from form", self)
-        paramLayout.addWidget(initialOption)
-        paramLayout.addWidget(dynamOption)
-        paramBox.setLayout(paramLayout)
+        varianceBox = QGroupBox("Kalman Filter options")
+        self.entry = QLineEdit("1")
+        self.entry.setFixedWidth(30)
+        self.entry.setMaxLength(5)
+        t_validator = QRegExpValidator(QRegExp(r"\d"))
+        self.entry.setValidator(t_validator)
 
-        initialOption.toggled.connect(lambda: self.paramMode(0))
-        dynamOption.toggled.connect(lambda: self.paramMode(1))
-
-        self.solveOpt = 0
-        solveBox = QGroupBox("Step options:")
-        solveLayout = QVBoxLayout(solveBox)
-        plotOption = QRadioButton("Plot EKF result", self)
-        plotOption.setChecked(True)
-        stepOption = QRadioButton("Plot EKF step-by-step", self)
-        solveLayout.addWidget(plotOption)
-        solveLayout.addWidget(stepOption)
-        solveBox.setLayout(solveLayout)
-
-        plotOption.toggled.connect(lambda: self.solveMode(0))
-        stepOption.toggled.connect(lambda: self.solveMode(1))
-
-        noiseBox = QGroupBox("Noise options:")
+        varianceLayout = QFormLayout(varianceBox)
+        varianceLayout.addRow("Initial uncertainty:", self.entry)
+        varianceBox.setLayout(varianceLayout)
 
         buttons = QDialogButtonBox(Qt.Horizontal, self)
         buttons.addButton(QDialogButtonBox.Ok)
@@ -52,22 +36,15 @@ class KalmanFilterForm(QDialog):
         buttons.rejected.connect(self.reject)
 
         formlayout = QVBoxLayout(self)
-        formlayout.addWidget(paramBox)
-        formlayout.addWidget(solveBox)
+        formlayout.addWidget(varianceBox)
         formlayout.addWidget(buttons)
 
-    def paramMode(self, opt):
-        self.paramOpt = opt
-
-    def solveMode(self, opt):
-        self.solveOpt = opt
-
-    def get_options(self):
-        return (self.paramOpt, self.solveOpt)
+    def get_variance(self):
+        return int(self.entry.text())
 
     @staticmethod
     def get_ekf_options(parent=None):
         dialog = KalmanFilterForm(parent)
         result = dialog.exec_()
-        options = dialog.get_options()
-        return (options, result == QDialog.Accepted)
+        variance = dialog.get_variance()
+        return (variance, result == QDialog.Accepted)

@@ -30,7 +30,6 @@ class ECGModel(QMainWindow):
         self.initUI()
 
         # TODO: Find better way to calculate screen geometry
-
         ag = QDesktopWidget().availableGeometry()
         sg = QDesktopWidget().screenGeometry()
         print(ag, sg)
@@ -122,6 +121,7 @@ class ECGModel(QMainWindow):
         paramfitAction = QAction("Parameter Fit Sample", self)
         paramfitAction.setStatusTip("Parameter Fit Sample ECG")
         paramfitAction.triggered.connect(self.parameter_fit)
+        # paramfitAction.triggered.connect(self.show_denoise_form)
 
         exitAction = QAction("Exit", self)
         exitAction.setShortcut("Ctrl+Q")
@@ -150,15 +150,14 @@ class ECGModel(QMainWindow):
                         NavigationToolbar(ecgframe, self))
 
     def init_formframe(self):
-        def make_entry(vdtr):
-            entry = QLineEdit()
+        def make_entry(val, vdtr):
+            entry = QLineEdit(val)
             entry.setFixedWidth(120)
             entry.setMaxLength(10)
             entry.setValidator(vdtr)
             return entry
-        pi_re = QRegExp(r"[\d.+\-*/()pi\s]*")
-        pi_validator = QRegExpValidator(pi_re)
 
+        pi_validator = QRegExpValidator(QRegExp(r"[\d.+\-*/()pi\s]*"))
         dbl_validator = QDoubleValidator(decimals=8)
         dbl_validator.setNotation(0)
 
@@ -166,21 +165,15 @@ class ECGModel(QMainWindow):
         entries_b = QHBoxLayout()
         entries_evt = QHBoxLayout()
         for i in range(5):
-            entry_a = make_entry(dbl_validator)
-            entry_a.insert(str(ECGModel.defaults["a"][i]))
-
-            entry_b = make_entry(dbl_validator)
-            entry_b.insert(str(ECGModel.defaults["b"][i]))
-
-            entry_evt = make_entry(pi_validator)
-            entry_evt.insert(ECGModel.defaults["evt"][i])
+            entry_a = make_entry(str(ECGModel.defaults["a"][i]), dbl_validator)
+            entry_b = make_entry(str(ECGModel.defaults["b"][i]), dbl_validator)
+            entry_evt = make_entry(ECGModel.defaults["evt"][i], pi_validator)
 
             entries_a.addWidget(entry_a)
             entries_b.addWidget(entry_b)
             entries_evt.addWidget(entry_evt)
 
-        entry_omega = make_entry(pi_validator)
-        entry_omega.insert(ECGModel.defaults["omega"][0])
+        entry_omega = make_entry(ECGModel.defaults["omega"][0], pi_validator)
 
         t_entry = QLineEdit()
         t_entry.setFixedWidth(30)
@@ -256,12 +249,13 @@ class ECGModel(QMainWindow):
     def show_denoise_form(self):
         sample = next((l for l in self.ax.get_lines() if l.get_label() == "sample"), None)
         if not sample:
-            print("no sample found!")
+            self.show_warning("Warning", "No sample to estimate paramters")
             return
         opts, res = ekf_form.KalmanFilterForm.get_ekf_options(self)
+        print(opts, res)
         if not res:
             return
-        self.denoise_sample(sample, opts)
+        self.parameter_fit2(sample, opts)
 
     def show_warning(self, title, message):
         msg = QMessageBox()
@@ -401,8 +395,35 @@ class ECGModel(QMainWindow):
             self.show_information("Build Error", "Build Error: could not generate ECG, check for invalid parameters")
             return
 
-        res = parameter_fit.parameter_est(ts, ys, a, b, e, omega)
+        res = parameter_fit.parameter_est(ts, ys, a, b, e, omega, 1)
         # res = parameter_fit.main()
+        data = {
+            "a": res[2][0:5],
+            "b": res[2][5:10],
+            "evt": res[2][10:15],
+            "omega": [res[2][15]]
+        }
+        self.removePlot("paramfit")
+        self.ax.plot(res[0], res[1], 'r--', label='paramfit')
+        self.set_entries(data)
+        self.redraw_axes()
+
+    def parameter_fit2(self, sample, opts):
+        if not sample:
+            self.show_warning("Warning", "No sample to estimate paramters")
+            return
+        ts = sample.get_xdata()
+        ys = sample.get_ydata()
+
+        try:
+            a, b, e, omega = self.parseParams(*self.get_entries())
+            # rr = helper.findpeak(ts, ys)
+            # omega = 2 * helper.pi / rr
+        except:
+            self.show_information("Build Error", "Build Error: could not generate ECG, check for invalid parameters")
+            return
+
+        res = parameter_fit.parameter_est(ts, ys, a, b, e, omega, opts)
         data = {
             "a": res[2][0:5],
             "b": res[2][5:10],

@@ -33,7 +33,7 @@ def state_jacobian():
     return sp.lambdify([dt, x, y, z, *a, *b, *e, omega, z0], j)
 
 
-def parameter_est(ts, ys, a, b, evt, omega, z0=0):
+def parameter_est(ts, ys, a, b, evt, omega, opts, z0=0):
     """Perform parameter estimation of ECG sample with EKF
 
     x: state vector
@@ -53,7 +53,8 @@ def parameter_est(ts, ys, a, b, evt, omega, z0=0):
     """
     xk = np.array([-1, 0, 0, *a, *b, *evt, omega])
 
-    P = float(1)
+    P = opts
+    # P = float(100)
     pk = np.asmatrix(np.eye(19)*P, dtype="float")
 
     Q = float(1)
