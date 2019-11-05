@@ -20,9 +20,9 @@ class KalmanFilterForm(QDialog):
 
         varianceBox = QGroupBox("Kalman Filter options")
         self.entry = QLineEdit("1")
-        self.entry.setFixedWidth(30)
+        self.entry.setFixedWidth(60)
         self.entry.setMaxLength(5)
-        t_validator = QRegExpValidator(QRegExp(r"\d"))
+        t_validator = QRegExpValidator(QRegExp(r"\d*"))
         self.entry.setValidator(t_validator)
 
         varianceLayout = QFormLayout(varianceBox)
@@ -40,7 +40,11 @@ class KalmanFilterForm(QDialog):
         formlayout.addWidget(buttons)
 
     def get_variance(self):
-        return int(self.entry.text())
+        try:
+            val = int(self.entry.text())
+        except:
+            val = 1
+        return 1 if not val else val
 
     @staticmethod
     def get_ekf_options(parent=None):

@@ -120,8 +120,8 @@ class ECGModel(QMainWindow):
 
         paramfitAction = QAction("Parameter Fit Sample", self)
         paramfitAction.setStatusTip("Parameter Fit Sample ECG")
-        paramfitAction.triggered.connect(self.parameter_fit)
-        # paramfitAction.triggered.connect(self.show_denoise_form)
+        # paramfitAction.triggered.connect(self.parameter_fit)
+        paramfitAction.triggered.connect(self.show_ekf_form)
 
         exitAction = QAction("Exit", self)
         exitAction.setShortcut("Ctrl+Q")
@@ -246,7 +246,7 @@ class ECGModel(QMainWindow):
     def show_slider_timeframe(self, tmax=1):
         return slider.SliderDialog.getTimeFrame(self, tmax=tmax)
 
-    def show_denoise_form(self):
+    def show_ekf_form(self):
         sample = next((l for l in self.ax.get_lines() if l.get_label() == "sample"), None)
         if not sample:
             self.show_warning("Warning", "No sample to estimate paramters")
@@ -388,7 +388,8 @@ class ECGModel(QMainWindow):
         ys = sample.get_ydata()
 
         try:
-            a, b, e, omega = self.parseParams(*self.get_entries())
+            a_, b_, e_, omega_, _ = self.get_entries()
+            a, b, e, omega = self.parseParams(a_, b_, e_, omega_)
             # rr = helper.findpeak(ts, ys)
             # omega = 2 * helper.pi / rr
         except:
@@ -416,7 +417,8 @@ class ECGModel(QMainWindow):
         ys = sample.get_ydata()
 
         try:
-            a, b, e, omega = self.parseParams(*self.get_entries())
+            a_, b_, e_, omega_, _ = self.get_entries()
+            a, b, e, omega = self.parseParams(a_, b_, e_, omega_)
             # rr = helper.findpeak(ts, ys)
             # omega = 2 * helper.pi / rr
         except:
@@ -431,6 +433,7 @@ class ECGModel(QMainWindow):
             "omega": [res[2][15]]
         }
         self.removePlot("paramfit")
-        self.ax.plot(res[0], res[1], 'r--', label='paramfit')
+        # self.ax.plot(res[0], res[1], 'r--', label='paramfit')
         self.set_entries(data)
+        self.show_information("Parameter Estimate", "Finished Parameter Estimation")
         self.redraw_axes()
