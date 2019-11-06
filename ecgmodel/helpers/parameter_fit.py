@@ -54,7 +54,6 @@ def parameter_est(ts, ys, a, b, evt, omega, opts, z0=0):
     xk = np.array([-1, 0, 0, *a, *b, *evt, omega])
 
     P = opts
-    # P = float(100)
     pk = np.asmatrix(np.eye(19)*P, dtype="float")
 
     Q = float(1)
@@ -111,12 +110,3 @@ def parameter_est(ts, ys, a, b, evt, omega, opts, z0=0):
 
     print("end")
     return (ts, [i[2] for i in xs[:]], xs[-1][3:19])
-
-
-def main():
-    np.set_printoptions(suppress=True)
-    a, b, evt, omega = helper.defaults()
-    ts, ys = helper.import_sample()
-    res = parameter_est(ts, ys, a, b, evt, omega)
-    # print(res[2])
-    return res

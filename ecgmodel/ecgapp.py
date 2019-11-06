@@ -109,6 +109,11 @@ class ECGModel(QMainWindow):
         # clearmenu.addAction(clearEKF)
         clearmenu.addAction(clearAll)
 
+        paramfitAction = QAction("Parameter Fit Sample", self)
+        paramfitAction.setStatusTip("Parameter Fit Sample ECG")
+        # paramfitAction.triggered.connect(self.parameter_fit)
+        paramfitAction.triggered.connect(self.show_ekf_form)
+
         resetAction = QAction("Reset", self)
         resetAction.setShortcut("Ctrl+R")
         resetAction.setStatusTip("Reset current parameters")
@@ -118,11 +123,6 @@ class ECGModel(QMainWindow):
         # peakAction.setStatusTip("Find Peaks")
         # peakAction.triggered.connect(self.peakfind)
 
-        paramfitAction = QAction("Parameter Fit Sample", self)
-        paramfitAction.setStatusTip("Parameter Fit Sample ECG")
-        # paramfitAction.triggered.connect(self.parameter_fit)
-        paramfitAction.triggered.connect(self.show_ekf_form)
-
         exitAction = QAction("Exit", self)
         exitAction.setShortcut("Ctrl+Q")
         exitAction.setStatusTip("Exit application")
@@ -131,9 +131,9 @@ class ECGModel(QMainWindow):
         filemenu.addMenu(importmenu)
         filemenu.addMenu(exportmenu)
         filemenu.addMenu(clearmenu)
+        filemenu.addAction(paramfitAction)
         filemenu.addAction(resetAction)
         # filemenu.addAction(peakAction)
-        filemenu.addAction(paramfitAction)
         filemenu.addAction(exitAction)
         aboutmenu = menubar.addMenu("About")
 
@@ -176,9 +176,9 @@ class ECGModel(QMainWindow):
         entry_omega = make_entry(ECGModel.defaults["omega"][0], pi_validator)
 
         t_entry = QLineEdit(str(1))
-        t_entry.setFixedWidth(30)
+        t_entry.setFixedWidth(50)
         t_entry.setMaxLength(5)
-        t_validator = QRegExpValidator(QRegExp(r"\d"))
+        t_validator = QRegExpValidator(QRegExp(r"\d*"))
         t_entry.setValidator(t_validator)
 
         # create a form
@@ -254,7 +254,7 @@ class ECGModel(QMainWindow):
         print(opts, res)
         if not res:
             return
-        self.parameter_fit2(sample, opts)
+        self.parameter_fit(sample, opts)
 
     def show_warning(self, title, message):
         msg = QMessageBox()
@@ -379,37 +379,7 @@ class ECGModel(QMainWindow):
         self.ax.plot(sol.t, sol.y[2], "k--", label="estimate")
         self.redraw_axes()
 
-    def parameter_fit(self):
-        sample = next((l for l in self.ax.get_lines() if l.get_label() == "sample"), None)
-        if not sample:
-            self.show_warning("Warning", "No sample to estimate paramters")
-            return
-        ts = sample.get_xdata()
-        ys = sample.get_ydata()
-
-        try:
-            a_, b_, e_, omega_, _ = self.get_entries()
-            a, b, e, omega = self.parseParams(a_, b_, e_, omega_)
-            # rr = helper.findpeak(ts, ys)
-            # omega = 2 * helper.pi / rr
-        except:
-            self.show_information("Build Error", "Build Error: could not generate ECG, check for invalid parameters")
-            return
-
-        res = parameter_fit.parameter_est(ts, ys, a, b, e, omega, 1)
-        # res = parameter_fit.main()
-        data = {
-            "a": res[2][0:5],
-            "b": res[2][5:10],
-            "evt": res[2][10:15],
-            "omega": [res[2][15]]
-        }
-        self.removePlot("paramfit")
-        self.ax.plot(res[0], res[1], 'r--', label='paramfit')
-        self.set_entries(data)
-        self.redraw_axes()
-
-    def parameter_fit2(self, sample, opts):
+    def parameter_fit(self, sample, opts):
         if not sample:
             self.show_warning("Warning", "No sample to estimate paramters")
             return
@@ -426,6 +396,7 @@ class ECGModel(QMainWindow):
             return
 
         res = parameter_fit.parameter_est(ts, ys, a, b, e, omega, opts)
+        # print(res[2])
         data = {
             "a": res[2][0:5],
             "b": res[2][5:10],

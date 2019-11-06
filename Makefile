@@ -4,6 +4,9 @@ install:
 build:
 	python3 setup.py sdist bdist_wheel
 
+clean:
+	rm -r */__pycache__
+
 clean-build:
 	rm -rf build
 	rm -rf dist
