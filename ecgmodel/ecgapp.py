@@ -95,9 +95,9 @@ class ECGModel(QMainWindow):
         clearSample.setStatusTip("Remove ECG sample")
         clearSample.triggered.connect(lambda: self.removePlot("sample"))
 
-        clearEKF = QAction("Clear EKF", self)
-        clearEKF.setStatusTip("Remove EKF plot")
-        clearEKF.triggered.connect(lambda: self.removePlot("paramfit"))
+        # clearEKF = QAction("Clear EKF", self)
+        # clearEKF.setStatusTip("Remove EKF plot")
+        # clearEKF.triggered.connect(lambda: self.removePlot("paramfit"))
 
         clearAll = QAction("Clear All", self)
         clearAll.setStatusTip("Clear all graphs")
@@ -106,7 +106,7 @@ class ECGModel(QMainWindow):
         clearmenu = QMenu("Clear", self)
         clearmenu.addAction(clearEstimate)
         clearmenu.addAction(clearSample)
-        clearmenu.addAction(clearEKF)
+        # clearmenu.addAction(clearEKF)
         clearmenu.addAction(clearAll)
 
         resetAction = QAction("Reset", self)
@@ -175,12 +175,11 @@ class ECGModel(QMainWindow):
 
         entry_omega = make_entry(ECGModel.defaults["omega"][0], pi_validator)
 
-        t_entry = QLineEdit()
+        t_entry = QLineEdit(str(1))
         t_entry.setFixedWidth(30)
         t_entry.setMaxLength(5)
         t_validator = QRegExpValidator(QRegExp(r"\d"))
         t_entry.setValidator(t_validator)
-        t_entry.insert(str(1))
 
         # create a form
         self.formlayout = QFormLayout()
@@ -190,7 +189,7 @@ class ECGModel(QMainWindow):
         self.formlayout.addRow("b", entries_b)
         self.formlayout.addRow("theta", entries_evt)
         self.formlayout.addRow("omega", entry_omega)
-        self.formlayout.addRow("t(s)", t_entry)
+        self.formlayout.addRow("t (s)", t_entry)
 
         button = QPushButton("Build")
         button.setToolTip("Generate ECG with parameters")
@@ -214,7 +213,7 @@ class ECGModel(QMainWindow):
         b = [entries_b.itemAt(i).widget().text() for i in range(5)]
         evt = [entries_evt.itemAt(i).widget().text() for i in range(5)]
         omega = self.formlayout.itemAt(3, 1).widget().text()
-        tf = self.formlayout.itemAt(4, 1).widget().text()
+        tf = int(self.formlayout.itemAt(4, 1).widget().text())
 
         return (a, b, evt, omega, tf)
 
@@ -284,11 +283,12 @@ class ECGModel(QMainWindow):
                 self.show_warning("Import Error", "Import Error: file contains invalid parameters")
                 return
             a, b, evt, omega = self.parseParams(data["a"], data["b"], data["evt"], data["omega"][0])
+            tf = int(self.formlayout.itemAt(4, 1).widget().text())
         except:
             self.show_warning("Import Error", "Import Error: file contains invalid parameters")
             return
         self.set_entries(data)
-        self.buildECG(a, b, evt, omega)
+        self.buildECG(a, b, evt, omega, tf)
 
     def import_sample(self, filename, timeframe=1):
         caption = "Import ECG Sample"
@@ -432,7 +432,7 @@ class ECGModel(QMainWindow):
             "evt": res[2][10:15],
             "omega": [res[2][15]]
         }
-        self.removePlot("paramfit")
+        # self.removePlot("paramfit")
         # self.ax.plot(res[0], res[1], 'r--', label='paramfit')
         self.set_entries(data)
         self.show_information("Parameter Estimate", "Finished Parameter Estimation")
