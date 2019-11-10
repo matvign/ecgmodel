@@ -38,34 +38,33 @@ def parameter_est(ts, ys, a, b, evt, omega, opts, z0=0):
 
     x: state vector
     p: covariance matrix
-
-    F: state transition model
-    A: measurement function
-
     Q: variance for process noise
-    R: variance for measurement noise
-    Qk: matrix for process noise
-    Rk: matrix for measurement noise
+    Qk: covariance matrix for process noise
 
-    G: control matrix for external influence, nothing in this case
-    u: control vector for external influence, nothing in this case
+    f: process function
+    w: process noise vector
+    A: jacobian of f wrt x
+    F: jacobian of f wrt w, this can be ignored or set to identity
 
+    g: measurement function
+    v: measurement noise vector
+    C: jacobian of g wrt x
+    G: jacobian of g wrt v
     """
     xk = np.array([-1, 0, 0, *a, *b, *evt, omega])
-
     P = opts
     pk = np.asmatrix(np.eye(19)*P, dtype="float")
 
     Q = float(1)
-    R = float(1)
     Qk = np.asmatrix(np.eye(19)*Q, dtype="float")
+    R = float(1)
     Rk = np.asmatrix([R])
+
+    A = state_jacobian()
+    G = np.matrix([1])
 
     xs = []
     t_old = ts[0]
-
-    F = state_jacobian()
-
     for tk, yk in zip(ts, ys):
         dt = tk - t_old
 
@@ -73,25 +72,24 @@ def parameter_est(ts, ys, a, b, evt, omega, opts, z0=0):
         x_hat = helper.discrete_ecg_model(dt, xk)
         x_hat = np.asmatrix(x_hat).T
 
-        # Fk = state_jacobian(dt, xk, omega, z0)
-        Fk = F(dt, *xk, z0)
-        p_hat = Fk * pk * Fk.T + Qk
+        Ak = A(dt, *xk, z0)
+        p_hat = Ak * pk * Ak.T + Qk
         # print("-- Prediction --")
         # print("-- tk:", tk, "dt:", dt)
         # print("-- x_hat --\n", x_hat.T)
         # print("-- p_hat --\n", p_hat)
-        # print("-- F --\n", Fk)
-        # print("-- Q --\n", Qk)
+        # print("-- A --\n", Fk)
+        # print("-- F --\n", Qk)
         # print()
 
         # perform update
-        h = np.matrix([0, 0, 1, *[0 for i in range(16)]])
-        H = np.matrix([0, 0, 1-dt, *[0 for i in range(16)]])
+        g = np.matrix([0, 0, 1, *[0 for i in range(16)]])
+        C = np.matrix([0, 0, 1-dt, *[0 for i in range(16)]])
 
-        zk = yk - h*x_hat
-        S = H * p_hat * H.T + Rk
-        K = p_hat * H.T * S.I
-        pk = p_hat - K*H*p_hat
+        zk = yk - g*x_hat
+        S = C * p_hat * C.T + G
+        K = p_hat * C.T * S.I
+        pk = p_hat - K*C*p_hat
 
         xk = x_hat + K*zk
         xk = np.array(xk.T, dtype="float")[0]
@@ -99,8 +97,8 @@ def parameter_est(ts, ys, a, b, evt, omega, opts, z0=0):
         # print("-- Update --")
         # print("-- xk --\n", xk.T)
         # print("-- pk --\n", pk)
-        # print("-- A --\n", A)
-        # print("-- Rk.I --\n", Rk.I)
+        # print("-- C --\n", C)
+        # print("-- G --\n", G)
         # print()
 
         # yield xk

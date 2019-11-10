@@ -13,14 +13,6 @@ pi = np.pi
 pi_regx = re.compile(r"(pi\s*|[0-9.]+)(?=(\s*pi|[0-9.]))")
 
 
-def defaults():
-    a = np.array([12, -50, 300, -75, 7.5])
-    b = np.array([0.25, 0.1, 0.1, 0.1, 0.4])
-    evt = np.array([-np.pi/3, -np.pi/12, 0, np.pi/12, np.pi/2])
-    omega = 4*np.pi
-    return (a, b, evt, omega)
-
-
 def import_sample():
     csvdata = np.genfromtxt("built3.csv", delimiter=",", skip_header=2)
     # csvdata = np.genfromtxt("nsrdb-16483-ecg1.csv", delimiter=",", skip_header=2)
@@ -175,6 +167,4 @@ def solve_ecg(a, b, evt, omega, tf=1):
     fun = lambda t, y: ecg_model(y, a, b, evt, omega)
     print("solving...")
     sol = solve_ivp(fun=fun, t_span=(0, tf), y0=y0, t_eval=teval)
-    # for tk, yk in zip(sol.t, sol.y[2]):
-    #     print("{},{}".format(tk, yk))
     return sol

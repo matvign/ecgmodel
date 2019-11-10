@@ -95,10 +95,6 @@ class ECGModel(QMainWindow):
         clearSample.setStatusTip("Remove ECG sample")
         clearSample.triggered.connect(lambda: self.removePlot("sample"))
 
-        # clearEKF = QAction("Clear EKF", self)
-        # clearEKF.setStatusTip("Remove EKF plot")
-        # clearEKF.triggered.connect(lambda: self.removePlot("paramfit"))
-
         clearAll = QAction("Clear All", self)
         clearAll.setStatusTip("Clear all graphs")
         clearAll.triggered.connect(self.removeAll)
@@ -106,7 +102,6 @@ class ECGModel(QMainWindow):
         clearmenu = QMenu("Clear", self)
         clearmenu.addAction(clearEstimate)
         clearmenu.addAction(clearSample)
-        # clearmenu.addAction(clearEKF)
         clearmenu.addAction(clearAll)
 
         paramfitAction = QAction("Parameter Fit Sample", self)
@@ -376,7 +371,7 @@ class ECGModel(QMainWindow):
     def buildECG(self, a, b, evt, omega, tf):
         self.removePlot()
         sol = helper.solve_ecg(a, b, evt, omega, tf)
-        self.ax.plot(sol.t, sol.y[2], "k--", label="estimate")
+        self.ax.plot(sol.t, sol.y[2], "r--", label="estimate")
         self.redraw_axes()
 
     def parameter_fit(self, sample, opts):
@@ -396,15 +391,12 @@ class ECGModel(QMainWindow):
             return
 
         res = parameter_fit.parameter_est(ts, ys, a, b, e, omega, opts)
-        # print(res[2])
         data = {
             "a": res[2][0:5],
             "b": res[2][5:10],
             "evt": res[2][10:15],
             "omega": [res[2][15]]
         }
-        # self.removePlot("paramfit")
-        # self.ax.plot(res[0], res[1], 'r--', label='paramfit')
         self.set_entries(data)
         self.show_information("Parameter Estimate", "Finished Parameter Estimation")
         self.redraw_axes()
