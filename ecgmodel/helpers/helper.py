@@ -133,7 +133,7 @@ def ecg_model(X, a, b, evt, omega=2*np.pi, z0=0):
     return dX
 
 
-def discrete_ecg_model(dt, X, z0=0):
+def discrete_ecg_model(dt, X, z0=0, Q=0):
     """Discrete version of ecg_model """
     x, y, z = X[0:3]
     a = X[3:8]
@@ -152,7 +152,10 @@ def discrete_ecg_model(dt, X, z0=0):
         for ai, bi, dthi in zip(a, b, dtheta)
     )
     Xk[3:19] = [*a, *b, *e, omega]
-    return Xk
+
+    w = np.zeros(19)
+    w[0:3] = np.random.normal(0, Q, 3)
+    return Xk + w
 
 
 def solve_ecg(a, b, evt, omega, tf=1):
