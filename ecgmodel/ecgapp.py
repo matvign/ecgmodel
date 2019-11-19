@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (QAction, QDesktopWidget, QFileDialog, QFormLayout,
                              QMainWindow, QMenu, QMessageBox, QPushButton,
                              QVBoxLayout, QWidget, qApp)
 
-from ecgmodel import slider, ekf_form
+from ecgmodel.forms import slider, ekf_form
 from ecgmodel.helpers import helper, parameter_fit
 
 

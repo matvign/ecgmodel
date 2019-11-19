@@ -15,7 +15,7 @@ class KalmanFilterForm(QDialog):
     def __init__(self, parent=None):
         super().__init__()
 
-        self.setWindowTitle("Extended Kalman Filter")
+        self.setWindowTitle("Parameter Estimation")
         self.setMinimumSize(550, 50)
 
         varianceBox = QGroupBox("Kalman Filter options")

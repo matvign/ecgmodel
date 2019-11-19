@@ -86,7 +86,7 @@ def parameter_est(ts, ys, a, b, evt, omega, opts, z0=0):
 
         # perform update
         g = np.matrix([0, 0, 1, *[0 for i in range(16)]])
-        C = np.matrix([0, 0, 1-dt, *[0 for i in range(16)]])
+        C = np.matrix([0, 0, 1, *[0 for i in range(16)]])
 
         vk = np.random.normal(0, 0, 1)
         gk = g*x_hat + vk
